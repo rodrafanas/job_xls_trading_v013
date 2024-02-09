@@ -63,11 +63,10 @@ def carrega_parms(file_parms):
 
 st.title("Editor de Arquivos Excel")
 
-uploaded_files = None
 
 uploaded_files = st.file_uploader("Faça upload dos arquivos: ", accept_multiple_files=True, type=["xlsx","json"])
 
-if uploaded_files is not None:
+if uploaded_files != {}:
     # Dicionários para separar os arquivos
     xlsx_files = {}
     resumo_file = {}
@@ -87,24 +86,21 @@ if uploaded_files is not None:
 
 
     ## xlsx
-    st.header('xlsx files')
-    xlsx_files_mod = list(xlsx_files.values())
-    # st.write(xlsx_files_mod)
-
-    dfx = gera_df(xlsx_files_mod)
-    st.data_editor(dfx, key = 'dfx')
+    if xlsx_files != {}:
+        st.header('xlsx files')
+        xlsx_files_mod = list(xlsx_files.values())
+        dfx = gera_df(xlsx_files_mod)
+        st.data_editor(dfx, key = 'dfx')
 
     ## resumo
-    st.header("resumo.xlsx file")
-    st.write(resumo_file)
-
-    df_resumo = pd.read_excel(resumo_file["resumo.xlsx"])
-    st.data_editor(df_resumo, key= 'df_resumo')
+    if resumo_file != {}:
+        st.header("resumo.xlsx file")
+        df_resumo = pd.read_excel(resumo_file["resumo.xlsx"])
+        st.data_editor(df_resumo, key= 'df_resumo')
 
     ## parms 
-    st.header('parms.json file')
-    st.write(parms_file)
-
-    file_parms = parms_file['parms.json']
-    params = carrega_parms(file_parms)
-    st.write(params)
+    if parms_file != {}:
+        st.header('parms.json file')
+        file_parms = parms_file['parms.json']
+        params = carrega_parms(file_parms)
+        st.write(params)

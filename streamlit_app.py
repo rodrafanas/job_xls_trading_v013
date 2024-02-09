@@ -4,61 +4,53 @@ import numpy as np
 import os
 import warnings
 import io
-
+import json
 
 warnings.filterwarnings("ignore")
 
+def extract_table_from_file(path_to_file):
+    # st.write(path_to_file.name)
+    if path_to_file.name != 'resumo.xlsx':
+        df = pd.read_excel(path_to_file)
+        cols = df.iloc[2].to_list()
+        cols = ['NaN' if pd.isna(valor) else valor for valor in cols]
+        
+        df = df.set_axis(cols, axis = 1)
+        df = df.iloc[5:]
+        indice_final = df[df["Mic"].isna()].index[0]
+        df =  df.drop(df.index[indice_final-5:])
+        lote = path_to_file.name.replace('.xlsx', '')
+        df['Lote'] = lote
+        # lote = df['Lote'].str.replace('/', '', regex=False)
+        # df['Lote'] = lote   
+        df['COR'] = '31-4'
 
-def extract_table_from_file(path_to_file, folder_path):
-    df = pd.read_excel(path_to_file)
-    cols = df.iloc[2].to_list()
-    cols = ['NaN' if pd.isna(valor) else valor for valor in cols]
-    # print(cols)
-    df = df.set_axis(cols, axis = 1)
-    df = df.iloc[5:]
-    indice_final = df[df["Mic"].isna()].index[0]
-    df =  df.drop(df.index[indice_final-5:])
-    # lote = path_to_file.replace(os.getcwd()+'/', '').replace('.xlsx', '')
-    lote = path_to_file.replace(path_to_file+'/', '').replace('.xlsx', '')
-    df['Lote'] = lote
-    lote = df['Lote'].str.replace(folder_path+'/', '', regex=False)
-    df['Lote'] = lote   
-    df['COR'] = '31-4'
+        # Verifique se a coluna 'LEAF' existe no DataFrame
+        if 'LEAF' not in df.columns:
+            # Se não existir, crie uma coluna 'LEAF' com valores vazios
+            df['LEAF'] = np.nan
 
-    # Verifique se a coluna 'LEAF' existe no DataFrame
-    if 'LEAF' not in df.columns:
-        # Se não existir, crie uma coluna 'LEAF' com valores vazios
-        df['LEAF'] = np.nan
-
-    sel_cols = ['Lote','Fardo','P. Líquido', 'Mic', 'UHM', 'Res', 'COR', 'LEAF']
-    df = df[sel_cols]
+        sel_cols = ['Lote','Fardo','P. Líquido', 'Mic', 'UHM', 'Res', 'COR', 'LEAF']
+        df = df[sel_cols]
+    else:
+        df = pd.read_excel(path_to_file)
 
     return df
 
-
-
-# Obtenha o caminho do diretório de trabalho atual
-def catch_path_files(path_data):
-    # Primeiro, vá para o diretório especificado
-    # Liste todos os arquivos e diretórios no caminho especificado
-    path_to_folder = path_data
-    files_and_folders = os.listdir(path_to_folder)
-    # Filtra apenas os arquivos com extensão .xlsx e exclui "resumo.xlsx"
-    files = [os.path.join(path_to_folder, f) for f in files_and_folders if os.path.isfile(os.path.join(path_to_folder, f)) and f.endswith('.xlsx') and f != 'resumo.xlsx']
+def run_extract_table(files):
     
-    return files
-
-def run_extract_table(files, folder_path):
     # Itere sobre cada arquivo
     df = pd.DataFrame()
-    for file in files:    
-        # Define o caminho do arquivo 
-        path_to_file = file
-        # print(path_to_file)
-        table = extract_table_from_file(path_to_file, folder_path)
-        df =  pd.concat([df,table])
+    for file in files.values():    
+        
+        table = extract_table_from_file(file)
+        if file.name != 'resumo.xlsx':
+            df =  pd.concat([df,table])
+        else:
+            df = table
 
     return df
+
 
 def stats_table(df,slider_bales_before=28, option_res= 'acima',
                 # slider_mic_min=3.86, slider_mic_max=4.50, 
@@ -191,13 +183,19 @@ def stats_table(df,slider_bales_before=28, option_res= 'acima',
 
     return resultados
 
-def carrega_parms(folder_path):
-    with open(os.path.join(folder_path,'parms.txt'), 'r') as f:
-        params = {}
-        for line in f:
-            key, value = line.strip().split(': ')
-            params[key] = value
+# def carrega_parms(folder_path):
+#     with open(os.path.join(folder_path,'parms.txt'), 'r') as f:
+#         params = {}
+#         for line in f:
+#             key, value = line.strip().split(': ')
+#             params[key] = value
+#     return params
+
+def carrega_parms(parms_file):
+    file_parms = parms_file['parms.json']
+    params = json.load(file_parms)      
     return params
+
 
 def indica_parms_slider(params):
 
@@ -218,7 +216,7 @@ def indica_parms_slider(params):
 
     slider_mic = st.slider(
         f'Mic entre:',
-        2.00, 5.00, (float(eval(params['slider_mic'])[0]), float(eval(params['slider_mic'])[1])))
+        2.00, 5.00, (float(params['slider_mic'][0]), float(params['slider_mic'][1])))
     st.write(f"Mic entre {float(slider_mic[0])} e {float(slider_mic[1])}")
 
     ## Filtro UHM
@@ -231,11 +229,12 @@ def indica_parms_slider(params):
     return slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm
 
 def processa_resultado(df,slider_bales_before, option_res,
-                slider_mic, slider_uhm, option_uhm, folder_path, rec_parm):
+                slider_mic, slider_uhm, option_uhm, resumo_file, rec_parm):
     resultado = stats_table(df,slider_bales_before, option_res,
                 slider_mic, slider_uhm, option_uhm)
     if rec_parm == 1:
-        rig = pd.read_excel(f"{folder_path}/resumo.xlsx")[['Lote','OFFERED','SOLD']].set_index('Lote')
+        
+        rig = pd.read_excel(resumo_file["resumo.xlsx"])[['Lote','OFFERED','SOLD']].set_index('Lote')
         
         # Leitura e exibição do conteúdo do dataframe editável
         resultado1 = resultado.reset_index()
@@ -249,22 +248,62 @@ def processa_resultado(df,slider_bales_before, option_res,
     # edited_df = st.dataframe((resultado2))
     return edited_df, resultado2
 
-def salva_resultado2(df_resultado, params, slider_bales_before, option_res,
-                slider_mic, slider_uhm, option_uhm, folder_path):
+
+
+# def salva_parms(folder_path, slider_bales_before, option_res,
+#                 slider_mic, slider_uhm, option_uhm):
+#     params = {}
+#     # carrega os parametro no dic params
+#     params['slider_bales_before'] = slider_bales_before
+#     params['slider_mic'] = list(slider_mic)
+#     params['slider_uhm'] = slider_uhm
+#     params['option_res'] = option_res
+#     params['option_uhm'] = option_uhm
     
-    df_resultado.to_excel(f"{folder_path}/resumo.xlsx")
+#     with open(f'{folder_path}/parms.json', 'w') as json_file:
+#         json.dump(params, json_file, indent=4)
 
-    params['slider_bales_before'] = slider_bales_before
-    params['slider_mic'] = slider_mic
-    params['slider_uhm'] = slider_uhm
-    params['option_res'] = option_res
-    # params['option_mic'] = option_mic
-    params['option_uhm'] = option_uhm
+def salva_parms(slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm):
+    params = {
+        'slider_bales_before': slider_bales_before,
+        'slider_mic': list(slider_mic),
+        'slider_uhm': slider_uhm,
+        'option_res': option_res,
+        'option_uhm': option_uhm
+    }
+    
+    # Retorna os dados JSON como uma string
+    return json.dumps(params, indent=4)
 
-    # Salva os parâmetros em um arquivo
-    with open(f"{folder_path}/parms.txt", 'w') as f:
-        for key, value in params.items():
-            f.write(f"{key}: {value}\n")
+# Função auxiliar para converter DataFrame para Excel
+def to_excel(df):
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Sheet1')
+    processed_data = output.getvalue()
+    return processed_data
+
+
+def salva_resultado2(edited_df, df_resultado, slider_bales_before, option_res,
+                slider_mic, slider_uhm, option_uhm):
+    
+    st.download_button(label='Download Excel',
+                    data=to_excel(df_resultado),
+                    file_name='resumo.xlsx',
+                    mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    key="resumo")
+
+    # Chama a função modificada para obter os dados JSON
+    dados_json = salva_parms(slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm)
+    
+    # Cria o botão de download
+    st.download_button(
+        label="Download parms.json",
+        data=dados_json,
+        file_name="parms.json",
+        mime='application/json',
+        key="parms"
+    )
 
 
 
@@ -298,30 +337,36 @@ def solicita_parms_slider():
     st.write(f'UHM {option_uhm} de:', slider_uhm)
     return slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm
 
-def gera_df(folder_path):
-    files = catch_path_files(folder_path)
-    if not files:
-        st.warning("Nenhum arquivo xlsx encontrado na pasta fornecida.")
-        st.stop()
 
+def gera_df(files):
+    
     # Extração dos arquivos xlsx
-    df = run_extract_table(files, folder_path)
+    df = run_extract_table(files)
     return df
 
+
 def selecionar_lotes():
-    # Caminho para a pasta principal
-    # folder_path0 = "../../Dropbox/trading_app"
-    folder_path0 = "data"
+    uploaded_files = st.file_uploader("Faça upload dos arquivos: ", accept_multiple_files=True, type=["xlsx","json"])
 
-    # Lista de pastas disponíveis
-    pastas_disponiveis = [nome for nome in os.listdir(folder_path0) if os.path.isdir(os.path.join(folder_path0, nome))]
+    if uploaded_files != {}:
+        # Dicionários para separar os arquivos
+        xlsx_files = {}
+        resumo_file = {}
+        parms_file = {}
 
-    # Caixa de seleção para escolher a pasta
-    pasta_escolhida = st.selectbox("Selecione uma Pasta", pastas_disponiveis)
 
-    # Caminho completo para a pasta escolhida
-    folder_path = os.path.join(folder_path0, pasta_escolhida)
-    return folder_path
+        for idx, uploaded_file in enumerate(uploaded_files):
+            # Verifica se é o arquivo parms.json
+            if uploaded_file.name == 'parms.json':
+                parms_file[uploaded_file.name] = uploaded_file
+            # Verifica se é o arquivo resumo.xlsx
+            elif uploaded_file.name == 'resumo.xlsx':
+                resumo_file[uploaded_file.name] = uploaded_file
+            # Todos os outros arquivos .xlsx
+            elif uploaded_file.name.endswith('.xlsx') and uploaded_file.name != 'resumo.xlsx':
+                xlsx_files[int(idx)] = uploaded_file
+    return xlsx_files, resumo_file, parms_file
+
 
 def func_sliders(rec_parm,params):
     if rec_parm == 1:
@@ -336,22 +381,24 @@ def func_sliders(rec_parm,params):
     
     return slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm
 
-def check_params(folder_path):
+def check_params(parms_file):
     # Verifica a existência do arquivo parms.txt e se está vazio
-    if os.path.exists(os.path.join(folder_path,'parms.txt')) and os.stat(os.path.join(folder_path,'parms.txt')).st_size != 0:
+    if parms_file != {}:
         st.title("Parâmetros previamente escolhidos")
         # lê e exibe os parâmetros
-        params = carrega_parms(folder_path)
+        params = carrega_parms(parms_file)
         st.write(params)
         rec_parm = 1
         
     ## Se não existe params.txt o usuario indica os params.    
     else:
-        st.title("Arquivo 'parms.txt' não encontrado.")
+        st.title("Arquivo 'parms.json' não encontrado.")
         params = {}
         rec_parm = 0
 
     return rec_parm, params
+
+
 
 def carrega_logo():
     # Inserindo o logo   
@@ -365,29 +412,28 @@ def main():
     carrega_logo()
     
     st.header("Selecione os Lotes:")
-    folder_path = selecionar_lotes()
+    xlsx_files, resumo_file, parms_file = selecionar_lotes()
 
-    if os.path.exists(folder_path) and os.path.isdir(folder_path):
-        st.success(f"Caminho definido para: {folder_path}")
+    # if os.path.exists(folder_path) and os.path.isdir(folder_path):
+    if xlsx_files != {}:        
+        st.success(f"Carregando os Lotes!")
         ## Checa se tem params anteriores
-        rec_parm, params = check_params(folder_path)
+        rec_parm, params = check_params(parms_file)
 
         ## Roda sliders        
         slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm = func_sliders(rec_parm,params)
         
         ## Gera df
-        df = gera_df(folder_path)
+        df = gera_df(xlsx_files)
     
         ## Processando os arquivos e gerando a tabela resultado
         st.header("Resumo dos Lotes:")
-        edited_df, df_resultado = processa_resultado(df,slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm, folder_path, rec_parm)
+        edited_df, df_resultado = processa_resultado(df,slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm, resumo_file, rec_parm)
         
         st.header("Salvar Resumo dos Lotes:")      
-        # Botão para salvar o dataframe editado como resumo.xlsx e o ultimo params.txt
-        if st.button("Salvar Resumo", key='first_save'):
-            # salva_resultado2(df_resultado, params, slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm, folder_path)
-            salva_resultado2(edited_df, params, slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm, folder_path)
-                
+        # salva_resultado2(df_resultado, params, slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm, folder_path)
+        salva_resultado2(edited_df, df_resultado, slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm)
+            
     else:
         st.error(f"Por favor selecione um Lote válido.")
 

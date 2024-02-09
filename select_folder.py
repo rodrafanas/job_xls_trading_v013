@@ -7,6 +7,9 @@ import openpyxl
 import io
 import json
 
+from io import BytesIO
+from pyxlsb import open_workbook as open_xlsb
+
 warnings.filterwarnings("ignore")
 
 
@@ -96,20 +99,7 @@ if xlsx_files != {}:
     dfx = gera_df(xlsx_files_mod)
     st.data_editor(dfx, key = 'dfx')
 
-from io import BytesIO
-from pyxlsb import open_workbook as open_xlsb
 
-# def to_excel(df):
-#     output = BytesIO()
-#     writer = pd.ExcelWriter(output, engine='xlsxwriter')
-#     df.to_excel(writer, index=False, sheet_name='Sheet1')
-#     workbook = writer.book
-#     worksheet = writer.sheets['Sheet1']
-#     format1 = workbook.add_format({'num_format': '0.00'}) 
-#     worksheet.set_column('A:A', None, format1)  
-#     writer.save()
-#     processed_data = output.getvalue()
-#     return processed_data
 
 # Função auxiliar para converter DataFrame para Excel
 def to_excel(df):

@@ -49,6 +49,7 @@ pydeck==0.8.1b0
 Pygments==2.17.2
 python-dateutil==2.8.2
 pytz==2024.1
+pyxlsb==1.0.10
 pyzmq==25.1.2
 referencing==0.33.0
 requests==2.31.0
@@ -70,4 +71,5 @@ urllib3==2.2.0
 validators==0.22.0
 watchdog==4.0.0
 wcwidth==0.2.13
+XlsxWriter==3.1.9
 zipp==3.17.0

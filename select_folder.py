@@ -96,11 +96,52 @@ if xlsx_files != {}:
     dfx = gera_df(xlsx_files_mod)
     st.data_editor(dfx, key = 'dfx')
 
+from io import BytesIO
+from pyxlsb import open_workbook as open_xlsb
+
+# def to_excel(df):
+#     output = BytesIO()
+#     writer = pd.ExcelWriter(output, engine='xlsxwriter')
+#     df.to_excel(writer, index=False, sheet_name='Sheet1')
+#     workbook = writer.book
+#     worksheet = writer.sheets['Sheet1']
+#     format1 = workbook.add_format({'num_format': '0.00'}) 
+#     worksheet.set_column('A:A', None, format1)  
+#     writer.save()
+#     processed_data = output.getvalue()
+#     return processed_data
+
+# Função auxiliar para converter DataFrame para Excel
+def to_excel(df):
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Sheet1')
+        # writer.save()
+    processed_data = output.getvalue()
+    return processed_data
+
+
+
 ## resumo
 if resumo_file != {}:
     st.header("resumo.xlsx file")
     df_resumo = pd.read_excel(resumo_file["resumo.xlsx"])
     st.data_editor(df_resumo, key= 'df_resumo')
+    # df_resumo_xlsx = to_excel(df_resumo)
+    # Botão de download
+    st.download_button(label='Download Excel',
+                    data=to_excel(df_resumo),
+                    file_name='resumo_output.xlsx',
+                    mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+
+    # st.download_button(label='Download resumo.xlsx',
+    #                             data=df_resumo_xlsx ,
+    #                             file_name= 'df_resumo_test.xlsx')
+
+
+    # st.download_button(label="Download resumo.xlsx", data=df_resumo, file_name="resumo_test.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
 
 ## parms 
 if parms_file != {}:

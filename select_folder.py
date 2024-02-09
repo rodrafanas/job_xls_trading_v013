@@ -56,7 +56,8 @@ def gera_df(files):
     df = run_extract_table(files)
     return df
 
-def carrega_parms(file_parms):
+def carrega_parms(parms_file):
+    file_parms = parms_file['parms.json']
     params = json.load(file_parms)      
     return params
 
@@ -104,7 +105,6 @@ if resumo_file != {}:
 ## parms 
 if parms_file != {}:
     st.header('parms.json file')
-    file_parms = parms_file['parms.json']
-    params = carrega_parms(file_parms)
+    params = carrega_parms(parms_file)
     st.write(params)
     

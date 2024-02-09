@@ -42,10 +42,10 @@ Para rodar o dashboard, execute o seguinte comando no diretório do projeto:
                       
 ### Uso
 
-
-1. **Carregar Dados:** Inicie o dashboard e carregue os arquivos `.xlsx` correspondentes a cada lote de algodão.
-2. **Definir Parâmetros:** Utilize os controles interativos para definir filtros baseados em Resistência da Fibra, Mic e UHM.
-3. **Análise e Exportação:** Visualize os resultados na tabela interativa e utilize a opção de exportação para baixar a tabela Resumo com todas as informações relevantes.
+1. **Acesse o Dashboard:** Clique no link: [trading_dashbord](https://trading-app-vequis.streamlit.app/)
+2. **Carregar Dados:** Inicie o dashboard e carregue os arquivos `.xlsx` correspondentes a cada lote de algodão.
+3. **Definir Parâmetros:** Utilize os controles interativos para definir filtros baseados em Resistência da Fibra, Mic e UHM.
+4. **Análise e Exportação:** Visualize os resultados na tabela interativa e utilize a opção de exportação para baixar a tabela Resumo com todas as informações relevantes.
 
 ## Contribuindo
 

@@ -61,46 +61,50 @@ def carrega_parms(file_parms):
     return params
 
 
+
+def selecionar_lotes():
+    uploaded_files = st.file_uploader("Faça upload dos arquivos: ", accept_multiple_files=True, type=["xlsx","json"])
+
+    if uploaded_files != {}:
+        # Dicionários para separar os arquivos
+        xlsx_files = {}
+        resumo_file = {}
+        parms_file = {}
+
+
+        for idx, uploaded_file in enumerate(uploaded_files):
+            # Verifica se é o arquivo parms.json
+            if uploaded_file.name == 'parms.json':
+                parms_file[uploaded_file.name] = uploaded_file
+            # Verifica se é o arquivo resumo.xlsx
+            elif uploaded_file.name == 'resumo.xlsx':
+                resumo_file[uploaded_file.name] = uploaded_file
+            # Todos os outros arquivos .xlsx
+            elif uploaded_file.name.endswith('.xlsx') and uploaded_file.name != 'resumo.xlsx':
+                xlsx_files[int(idx)] = uploaded_file
+    return xlsx_files, resumo_file, parms_file
+
 st.title("Editor de Arquivos Excel")
 
+xlsx_files, resumo_file, parms_file = selecionar_lotes()
 
-uploaded_files = st.file_uploader("Faça upload dos arquivos: ", accept_multiple_files=True, type=["xlsx","json"])
+## xlsx
+if xlsx_files != {}:
+    st.header('xlsx files')
+    xlsx_files_mod = list(xlsx_files.values())
+    dfx = gera_df(xlsx_files_mod)
+    st.data_editor(dfx, key = 'dfx')
 
-if uploaded_files != {}:
-    # Dicionários para separar os arquivos
-    xlsx_files = {}
-    resumo_file = {}
-    parms_file = {}
+## resumo
+if resumo_file != {}:
+    st.header("resumo.xlsx file")
+    df_resumo = pd.read_excel(resumo_file["resumo.xlsx"])
+    st.data_editor(df_resumo, key= 'df_resumo')
 
-
-    for idx, uploaded_file in enumerate(uploaded_files):
-        # Verifica se é o arquivo parms.json
-        if uploaded_file.name == 'parms.json':
-            parms_file[uploaded_file.name] = uploaded_file
-        # Verifica se é o arquivo resumo.xlsx
-        elif uploaded_file.name == 'resumo.xlsx':
-            resumo_file[uploaded_file.name] = uploaded_file
-        # Todos os outros arquivos .xlsx
-        elif uploaded_file.name.endswith('.xlsx') and uploaded_file.name != 'resumo.xlsx':
-            xlsx_files[int(idx)] = uploaded_file
-
-
-    ## xlsx
-    if xlsx_files != {}:
-        st.header('xlsx files')
-        xlsx_files_mod = list(xlsx_files.values())
-        dfx = gera_df(xlsx_files_mod)
-        st.data_editor(dfx, key = 'dfx')
-
-    ## resumo
-    if resumo_file != {}:
-        st.header("resumo.xlsx file")
-        df_resumo = pd.read_excel(resumo_file["resumo.xlsx"])
-        st.data_editor(df_resumo, key= 'df_resumo')
-
-    ## parms 
-    if parms_file != {}:
-        st.header('parms.json file')
-        file_parms = parms_file['parms.json']
-        params = carrega_parms(file_parms)
-        st.write(params)
+## parms 
+if parms_file != {}:
+    st.header('parms.json file')
+    file_parms = parms_file['parms.json']
+    params = carrega_parms(file_parms)
+    st.write(params)
+    

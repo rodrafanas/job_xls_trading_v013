@@ -128,41 +128,41 @@ def stats_table(df,slider_bales_before=28, option_res= 'acima',
                             f'UHM {option_uhm} de {slider_uhm}',]
 
     def class_uhm(valor):
-        if 0 <= valor <= 0.79:
+        if 0 >= valor <= 0.79:
             return 24
-        elif 0.80 <= valor <= 0.85:
+        elif 0.80 >= valor <= 0.85:
             return 26
-        elif 0.86 <= valor <= 0.89:
+        elif 0.86 >= valor <= 0.89:
             return 28
-        elif 0.90 <= valor <= 0.92:
+        elif 0.90 >= valor <= 0.92:
             return 29
-        elif 0.93 <= valor <= 0.95:
+        elif 0.93 >= valor <= 0.95:
             return 30
-        elif 0.96 <= valor <= 0.98:
+        elif 0.96 >= valor <= 0.98:
             return 31
-        elif 0.99 <= valor <= 1.01:
+        elif 0.99 >= valor <= 1.01:
             return 32
-        elif 1.02 <= valor <= 1.04:
+        elif 1.02 >= valor <= 1.04:
             return 33
-        elif 1.05 <= valor <= 1.07:
+        elif 1.05 >= valor <= 1.07:
             return 34
-        elif 1.08 <= valor <= 1.10:
+        elif 1.08 >= valor <= 1.10:
             return 35
-        elif 1.11 <= valor <= 1.13:
+        elif 1.11 >= valor <= 1.13:
             return 36
-        elif 1.14 <= valor <= 1.17:
+        elif 1.14 >= valor <= 1.17:
             return 37
-        elif 1.18 <= valor <= 1.20:
+        elif 1.18 >= valor <= 1.20:
             return 38
-        elif 1.21 <= valor <= 1.23:
+        elif 1.21 >= valor <= 1.23:
             return 39
-        elif 1.24 <= valor <= 1.26:
+        elif 1.24 >= valor <= 1.26:
             return 40
-        elif 1.27 <= valor <= 1.29:
+        elif 1.27 >= valor <= 1.29:
             return 41
-        elif 1.30 <= valor <= 1.32:
+        elif 1.30 >= valor <= 1.32:
             return 42
-        elif 1.33 <= valor <= 1.35:
+        elif 1.33 >= valor <= 1.35:
             return 43
         elif valor >= 1.36:
             return 44

@@ -63,49 +63,48 @@ def carrega_parms(file_parms):
 
 st.title("Editor de Arquivos Excel")
 
+uploaded_files = None
+
 uploaded_files = st.file_uploader("Faça upload dos arquivos: ", accept_multiple_files=True, type=["xlsx","json"])
 
-# st.write(uploaded_files)
-
-# Dicionários para separar os arquivos
-xlsx_files = {}
-resumo_file = {}
-parms_file = {}
-
-
-for idx, uploaded_file in enumerate(uploaded_files):
-    # Verifica se é o arquivo parms.json
-    if uploaded_file.name == 'parms.json':
-        parms_file[uploaded_file.name] = uploaded_file
-    # Verifica se é o arquivo resumo.xlsx
-    elif uploaded_file.name == 'resumo.xlsx':
-        resumo_file[uploaded_file.name] = uploaded_file
-    # Todos os outros arquivos .xlsx
-    elif uploaded_file.name.endswith('.xlsx') and uploaded_file.name != 'resumo.xlsx':
-        xlsx_files[int(idx)] = uploaded_file
+if uploaded_files is not None:
+    # Dicionários para separar os arquivos
+    xlsx_files = {}
+    resumo_file = {}
+    parms_file = {}
 
 
-## xlsx
-st.header('xlsx files')
-xlsx_files_mod = list(xlsx_files.values())
-# st.write(xlsx_files_mod)
-
-dfx = gera_df(xlsx_files_mod)
-st.data_editor(dfx, key = 'dfx')
-
-
-## resumo
-st.header("resumo.xlsx file")
-st.write(resumo_file)
-
-df_resumo = pd.read_excel(resumo_file["resumo.xlsx"])
-st.data_editor(df_resumo, key= 'df_resumo')
+    for idx, uploaded_file in enumerate(uploaded_files):
+        # Verifica se é o arquivo parms.json
+        if uploaded_file.name == 'parms.json':
+            parms_file[uploaded_file.name] = uploaded_file
+        # Verifica se é o arquivo resumo.xlsx
+        elif uploaded_file.name == 'resumo.xlsx':
+            resumo_file[uploaded_file.name] = uploaded_file
+        # Todos os outros arquivos .xlsx
+        elif uploaded_file.name.endswith('.xlsx') and uploaded_file.name != 'resumo.xlsx':
+            xlsx_files[int(idx)] = uploaded_file
 
 
-## parms 
-st.header('parms.json file')
-st.write(parms_file)
+    ## xlsx
+    st.header('xlsx files')
+    xlsx_files_mod = list(xlsx_files.values())
+    # st.write(xlsx_files_mod)
 
-file_parms = parms_file['parms.json']
-params = carrega_parms(file_parms)
-st.write(params)
+    dfx = gera_df(xlsx_files_mod)
+    st.data_editor(dfx, key = 'dfx')
+
+    ## resumo
+    st.header("resumo.xlsx file")
+    st.write(resumo_file)
+
+    df_resumo = pd.read_excel(resumo_file["resumo.xlsx"])
+    st.data_editor(df_resumo, key= 'df_resumo')
+
+    ## parms 
+    st.header('parms.json file')
+    st.write(parms_file)
+
+    file_parms = parms_file['parms.json']
+    params = carrega_parms(file_parms)
+    st.write(params)

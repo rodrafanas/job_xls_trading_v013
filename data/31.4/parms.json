@@ -1,10 +1,10 @@
 {
-    "slider_bales_before": 28.0,
+    "slider_bales_before": 28,
     "slider_mic": [
-        3.5,
-        4.9
+        3.58,
+        4.5
     ],
     "slider_uhm": 1.11,
-    "option_res": "acima",
-    "option_uhm": "acima"
+    "option_res": "abaixo",
+    "option_uhm": "abaixo"
 }

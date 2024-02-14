@@ -174,9 +174,21 @@ def stats_table(df,slider_bales_before=28, option_res= 'acima',
         else:
             return np.nan  # Classificação padrão para valores fora das faixas
 
+    def class_uhm(valor):
+        if 0 >= valor <= 1.10:
+            return 'below_36'
+        elif 1.11 >= valor <= 1.13:
+            return '36'
+        elif 1.14 >= valor <= 1.17:
+            return '37'
+        elif valor >= 1.18:
+            return 'above_38'
+        else:
+            return np.nan  # Classificação padrão para valores fora das faixas
+
     # Aplicar a função à coluna 'valor' e criar uma nova coluna 'classificacao'
     df['UHM_class'] = df['UHM'].apply(class_uhm)
-    UHM_class = pd.crosstab(df.Lote,df.UHM_class).add_prefix("UHM_").reset_index()
+    UHM_class = pd.crosstab(df.Lote,df.UHM_class, margins=True, margins_name="total").add_prefix("Staples_").reset_index()
 
     resultados = pd.merge(resultados,UHM_class,how='left',on='Lote')
 
@@ -316,7 +328,7 @@ def solicita_parms_slider():
     ## Filtro Res
     option_res = st.selectbox(
         'Selecione criterio de escolha:',
-        ('abaixo', 'acima'))
+        ('acima', 'abaixo'))
 
     # Solicita ao usuário os parâmetros
     slider_bales_before = st.slider(f'Resistência {option_res} de:', 20, 40, 28)
@@ -330,13 +342,13 @@ def solicita_parms_slider():
 
     slider_mic = st.slider(
         f'Mic entre:', 
-        2.00, 5.00, (3.58, 4.5))
+        2.00, 5.00, (3.70, 4.90))
     # st.write(f'Mic entre {slider_mic[0]} e {slider_mic[1]}')
     st.write(f"Mic entre {float(slider_mic[0])} e {float(slider_mic[1])}")
     ## Filtro UHM
     option_uhm = st.selectbox(
         'Selecione criterio de escolha:',
-        ('abaixo', 'acima'), key='uhm')
+        ('acima', 'abaixo'), key='uhm')
 
     slider_uhm = st.slider(f'UHM {option_uhm} de:', 0.00, 3.00, 1.11)
     st.write(f'UHM {option_uhm} de:', slider_uhm)

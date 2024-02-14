@@ -12,13 +12,18 @@ def extract_table_from_file(path_to_file):
     # st.write(path_to_file.name)
     if path_to_file.name != 'resumo.xlsx':
         df = pd.read_excel(path_to_file)
-        cols = df.iloc[2].to_list()
+
+        indice_inicio = df.head(10).T.isna().sum().index[df.head(10).T.isna().sum()<4][0]
+        cols = df.iloc[indice_inicio].to_list()
         cols = ['NaN' if pd.isna(valor) else valor for valor in cols]
-        
+        # print(cols)
         df = df.set_axis(cols, axis = 1)
-        df = df.iloc[5:]
+        drop_indices = df.head(10).T.isna().sum().index[df.head(10).T.isna().sum()>4].tolist()
+        # Removendo as linhas com base nos índices
+        df = df.drop(drop_indices).iloc[1:] #, inplace=True)
+
         indice_final = df[df["Mic"].isna()].index[0]
-        df =  df.drop(df.index[indice_final-5:])
+        df =  df.drop(df.index[indice_final-6:])
         lote = path_to_file.name.replace('.xlsx', '')
         df['Lote'] = lote
         # lote = df['Lote'].str.replace('/', '', regex=False)
@@ -176,7 +181,7 @@ def stats_table(df,slider_bales_before=28, option_res= 'acima',
     resultados = pd.merge(resultados,UHM_class,how='left',on='Lote')
 
 
-    resultados['OFFERED'] = np.nan
+    resultados['OFFERED'] = ""
     resultados['SOLD'] = False
     resultados.set_index('Lote', inplace=True)
     resultados.drop(columns='GPT 90%', inplace=True)
@@ -244,8 +249,8 @@ def processa_resultado(df,slider_bales_before, option_res,
     else:
         resultado2 = resultado
     
-    edited_df = st.data_editor((resultado2))
-    # edited_df = st.dataframe((resultado2))
+    # edited_df = st.data_editor((resultado2.reset_index(drop=False)))
+    edited_df = st.data_editor(resultado2.reset_index(drop=False).set_index('Lote',drop=False))
     return edited_df, resultado2
 
 
@@ -288,7 +293,7 @@ def salva_resultado2(edited_df, df_resultado, slider_bales_before, option_res,
                 slider_mic, slider_uhm, option_uhm):
     
     st.download_button(label='Download Excel',
-                    data=to_excel(df_resultado),
+                    data=to_excel(edited_df),
                     file_name='resumo.xlsx',
                     mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                     key="resumo")

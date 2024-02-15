@@ -21,9 +21,9 @@ def extract_table_from_file(path_to_file):
         drop_indices = df.head(10).T.isna().sum().index[df.head(10).T.isna().sum()>4].tolist()
         # Removendo as linhas com base nos índices
         df = df.drop(drop_indices).iloc[1:] #, inplace=True)
-
+        df = df.reset_index(drop=True)
         indice_final = df[df["Mic"].isna()].index[0]
-        df =  df.drop(df.index[indice_final-6:])
+        df =  df.drop(df.index[indice_final:])
         lote = path_to_file.name.replace('.xlsx', '')
         df['Lote'] = lote
         # lote = df['Lote'].str.replace('/', '', regex=False)

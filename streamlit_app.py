@@ -132,63 +132,74 @@ def stats_table(df,slider_bales_before=28, option_res= 'acima',
                             f'Mic entre {slider_mic[0]} e {slider_mic[1]}',
                             f'UHM {option_uhm} de {slider_uhm}',]
 
-    def class_uhm(valor):
-        if 0 >= valor <= 0.79:
-            return 24
-        elif 0.80 >= valor <= 0.85:
-            return 26
-        elif 0.86 >= valor <= 0.89:
-            return 28
-        elif 0.90 >= valor <= 0.92:
-            return 29
-        elif 0.93 >= valor <= 0.95:
-            return 30
-        elif 0.96 >= valor <= 0.98:
-            return 31
-        elif 0.99 >= valor <= 1.01:
-            return 32
-        elif 1.02 >= valor <= 1.04:
-            return 33
-        elif 1.05 >= valor <= 1.07:
-            return 34
-        elif 1.08 >= valor <= 1.10:
-            return 35
-        elif 1.11 >= valor <= 1.13:
-            return 36
-        elif 1.14 >= valor <= 1.17:
-            return 37
-        elif 1.18 >= valor <= 1.20:
-            return 38
-        elif 1.21 >= valor <= 1.23:
-            return 39
-        elif 1.24 >= valor <= 1.26:
-            return 40
-        elif 1.27 >= valor <= 1.29:
-            return 41
-        elif 1.30 >= valor <= 1.32:
-            return 42
-        elif 1.33 >= valor <= 1.35:
-            return 43
-        elif valor >= 1.36:
-            return 44
-        else:
-            return np.nan  # Classificação padrão para valores fora das faixas
+    # def class_uhm(valor):
+    #     if 0 >= valor <= 0.79:
+    #         return 24
+    #     elif 0.80 >= valor <= 0.85:
+    #         return 26
+    #     elif 0.86 >= valor <= 0.89:
+    #         return 28
+    #     elif 0.90 >= valor <= 0.92:
+    #         return 29
+    #     elif 0.93 >= valor <= 0.95:
+    #         return 30
+    #     elif 0.96 >= valor <= 0.98:
+    #         return 31
+    #     elif 0.99 >= valor <= 1.01:
+    #         return 32
+    #     elif 1.02 >= valor <= 1.04:
+    #         return 33
+    #     elif 1.05 >= valor <= 1.07:
+    #         return 34
+    #     elif 1.08 >= valor <= 1.10:
+    #         return 35
+    #     elif 1.11 >= valor <= 1.13:
+    #         return 36
+    #     elif 1.14 >= valor <= 1.17:
+    #         return 37
+    #     elif 1.18 >= valor <= 1.20:
+    #         return 38
+    #     elif 1.21 >= valor <= 1.23:
+    #         return 39
+    #     elif 1.24 >= valor <= 1.26:
+    #         return 40
+    #     elif 1.27 >= valor <= 1.29:
+    #         return 41
+    #     elif 1.30 >= valor <= 1.32:
+    #         return 42
+    #     elif 1.33 >= valor <= 1.35:
+    #         return 43
+    #     elif valor >= 1.36:
+    #         return 44
+    #     else:
+    #         return np.nan  # Classificação padrão para valores fora das faixas
 
     def class_uhm(valor):
-        if 0 >= valor <= 1.10:
-            return 'below_36'
-        elif 1.11 >= valor <= 1.13:
-            return '36'
-        elif 1.14 >= valor <= 1.17:
-            return '37'
-        elif valor >= 1.18:
-            return 'above_38'
-        else:
-            return np.nan  # Classificação padrão para valores fora das faixas
+        bins = [0, 1.11, 1.14, 1.18, np.inf]
+        labels = ['below_35', '36', '37', 'above_38']
+        return pd.cut([valor], bins=bins, labels=labels, right=False)[0]
+
 
     # Aplicar a função à coluna 'valor' e criar uma nova coluna 'classificacao'
+    df['UHM'] = df['UHM'].astype(float)
     df['UHM_class'] = df['UHM'].apply(class_uhm)
+
     UHM_class = pd.crosstab(df.Lote,df.UHM_class, margins=True, margins_name="total").add_prefix("Staples_").reset_index()
+
+    UHM_class.rename(columns={"Staples_total":"Total_Bales"},inplace=True)
+
+    cols_original = UHM_class.columns.tolist()
+
+    cols_final = ['Lote', 'Staples_below_35', 'Staples_36', 'Staples_37','Staples_above_38', 'Total_Bales']
+
+    cols_difference = list(set(cols_final) - set(cols_original))
+
+    # Adicionar as colunas ausentes ao DataFrame, preenchidas com 0
+    for col in cols_difference:
+        UHM_class[col] = 0
+
+    # Reordenar as colunas para corresponder à ordem em cols_final
+    UHM_class = UHM_class[cols_final]
 
     resultados = pd.merge(resultados,UHM_class,how='left',on='Lote')
 
@@ -425,8 +436,8 @@ def carrega_logo():
 # Função principal
 def main():
     st.set_page_config(layout="wide") 
-    st.title("Trading App")
     carrega_logo()
+    st.title("HVI Analysis System")
     
     st.header("Selecione os Lotes:")
     xlsx_files, resumo_file, parms_file = selecionar_lotes()

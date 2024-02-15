@@ -64,6 +64,7 @@ def stats_table(df,slider_bales_before=28, option_res= 'acima',
                 # slider_mic=df.Mic.mean().round(2), option_mic= 'acima',
                 # slider_uhm=df.UHM.mean().round(2), option_uhm= 'acima',):
     # Agrupa por 'lote' e calcula a estatistica 
+    df['UHM'] = df['UHM'].astype(float)
     resultados = df.groupby('Lote').agg(P_Liq_sum=pd.NamedAgg(column='P. Líquido', aggfunc=np.sum),
                                         Mic_avg=pd.NamedAgg(column='Mic', aggfunc=np.mean),
                                         Mic_min=pd.NamedAgg(column='Mic', aggfunc=np.min),
@@ -101,9 +102,9 @@ def stats_table(df,slider_bales_before=28, option_res= 'acima',
 
     ## UHM
     if option_uhm == 'acima':
-        UHM = df.groupby('Lote').agg(UHM_option=pd.NamedAgg(column='UHM', aggfunc=lambda x: np.count_nonzero(x>slider_uhm)/np.count_nonzero(x))).reset_index()
+        UHM = df.groupby('Lote').agg(UHM_option=pd.NamedAgg(column='UHM', aggfunc=lambda x: np.count_nonzero(x>=slider_uhm)/np.count_nonzero(x))).reset_index()
     elif option_uhm == 'abaixo':
-        UHM = df.groupby('Lote').agg(UHM_option=pd.NamedAgg(column='UHM', aggfunc=lambda x: np.count_nonzero(x<slider_uhm)/np.count_nonzero(x))).reset_index()
+        UHM = df.groupby('Lote').agg(UHM_option=pd.NamedAgg(column='UHM', aggfunc=lambda x: np.count_nonzero(x<=slider_uhm)/np.count_nonzero(x))).reset_index()
 
     resultados = pd.merge(resultados,UHM,how='left',on='Lote')
 
@@ -175,8 +176,8 @@ def stats_table(df,slider_bales_before=28, option_res= 'acima',
     #         return np.nan  # Classificação padrão para valores fora das faixas
 
     def class_uhm(valor):
-        bins = [0, 1.11, 1.14, 1.18, np.inf]
-        labels = ['below_35', '36', '37', 'above_38']
+        bins = [0, 1.08, 1.11, 1.14, 1.18, 1.21, np.inf]
+        labels = ['below_34', '35', '36', '37', '38', 'above_38']
         return pd.cut([valor], bins=bins, labels=labels, right=False)[0]
 
 
@@ -190,7 +191,8 @@ def stats_table(df,slider_bales_before=28, option_res= 'acima',
 
     cols_original = UHM_class.columns.tolist()
 
-    cols_final = ['Lote', 'Staples_below_35', 'Staples_36', 'Staples_37','Staples_above_38', 'Total_Bales']
+    cols_final = ['Lote', 'Staples_below_34', 'Staples_35','Staples_36', 'Staples_37','Staples_38','Staples_above_38', 'Total_Bales']
+
 
     cols_difference = list(set(cols_final) - set(cols_original))
 

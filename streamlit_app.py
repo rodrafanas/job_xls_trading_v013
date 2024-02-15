@@ -79,9 +79,9 @@ def stats_table(df,slider_bales_before=28, option_res= 'acima',
                                         ).reset_index()
     ## Res
     if option_res == 'acima':
-        Res = df.groupby('Lote').agg(Bales_below_28=pd.NamedAgg(column='Res', aggfunc=lambda x: np.count_nonzero(x>slider_bales_before)/np.count_nonzero(x))).reset_index()
+        Res = df.groupby('Lote').agg(Bales_below_28=pd.NamedAgg(column='Res', aggfunc=lambda x: np.count_nonzero(x>=slider_bales_before)/np.count_nonzero(x))).reset_index()
     elif option_res == 'abaixo':
-        Res = df.groupby('Lote').agg(Bales_below_28=pd.NamedAgg(column='Res', aggfunc=lambda x: np.count_nonzero(x<slider_bales_before)/np.count_nonzero(x))).reset_index()
+        Res = df.groupby('Lote').agg(Bales_below_28=pd.NamedAgg(column='Res', aggfunc=lambda x: np.count_nonzero(x<=slider_bales_before)/np.count_nonzero(x))).reset_index()
 
     resultados = pd.merge(resultados,Res,how='left',on='Lote')
 

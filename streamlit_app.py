@@ -13,12 +13,12 @@ def extract_table_from_file(path_to_file):
     if path_to_file.name != 'resumo.xlsx':
         df = pd.read_excel(path_to_file)
 
-        indice_inicio = df.head(10).T.isna().sum().index[df.head(10).T.isna().sum()<4][0]
+        indice_inicio = df.head(7).T.isna().sum().index[df.head(7).T.isna().sum()<4][0]
         cols = df.iloc[indice_inicio].to_list()
         cols = ['NaN' if pd.isna(valor) else valor for valor in cols]
         # print(cols)
         df = df.set_axis(cols, axis = 1)
-        drop_indices = df.head(10).T.isna().sum().index[df.head(10).T.isna().sum()>4].tolist()
+        drop_indices = df.head(7).T.isna().sum().index[df.head(7).T.isna().sum()>4].tolist()
         # Removendo as linhas com base nos índices
         df = df.drop(drop_indices).iloc[1:] #, inplace=True)
         df = df.reset_index(drop=True)

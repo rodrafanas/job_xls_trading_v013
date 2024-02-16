@@ -109,9 +109,9 @@ def stats_table(df,slider_bales_before=28, option_res= 'acima',
     resultados = pd.merge(resultados,UHM,how='left',on='Lote')
 
     # Formatar a coluna como porcentagem   
-    resultados['Bales_below_28'] = resultados['Bales_below_28'].map("{:.0%}".format)
-    resultados['Mic_option'] = resultados['Mic_option'].map("{:.1%}".format)
-    resultados['UHM_option'] = resultados['UHM_option'].map("{:.1%}".format)
+    resultados['Bales_below_28'] = resultados['Bales_below_28'].mul(100).apply(lambda x: round(x, 1)) #.apply(lambda x: f'{x * 100:.2f}%') #.map("{:.0%}".format)
+    resultados['Mic_option'] = resultados['Mic_option'].mul(100).apply(lambda x: round(x, 1)) #.apply(lambda x: f'{x * 100:.2f}%') #.map("{:.1%}".format)
+    resultados['UHM_option'] = resultados['UHM_option'].mul(100).apply(lambda x: round(x, 1)) #.apply(lambda x: f'{x * 100:.2f}%') #.map("{:.1%}".format)
     resultados['Mic_avg'] = resultados['Mic_avg'].apply(lambda x: round(x, 1))
     resultados['Mic_min'] = resultados['Mic_min'].apply(lambda x: round(x, 1))
     resultados['Mic_max'] = resultados['Mic_max'].apply(lambda x: round(x, 1))
@@ -124,14 +124,30 @@ def stats_table(df,slider_bales_before=28, option_res= 'acima',
     resultados['GPT_90'] = resultados['GPT_90'].apply(lambda x: round(x, 1))
     resultados['LEAF'] = resultados['LEAF'].apply(lambda x: round(x, 2))
 
+    ## traduzindo acima e abaixo para above and below
+    if option_res == 'acima':
+        option_res_trans = 'above'
+    elif option_res == 'abaixo':
+        option_res_trans = 'below'
+    else:
+        option_res_trans = option_res
+
+
+    if option_uhm == 'acima':
+        option_uhm_trans = 'above'
+    elif option_uhm == 'abaixo':
+        option_uhm_trans = 'below'
+    else:
+        option_uhm_trans = option_uhm
+
     # # Renomeia as colunas
-    resultados.columns = ['Lote', 'P. Líquido', 'Mic (avg)', 'Mic (min)', 'Mic (max)',
+    resultados.columns = ['Lote', 'Net weight', 'Mic (avg)', 'Mic (min)', 'Mic (max)',
                             'UHM Avg', 'UHM min', 'UHM max',
                             'GPT avg', 'GPT min', 'GPT Max', 'GPT 90%', 
-                            f'Res {option_res} de {slider_bales_before}',
+                            f'GPT {option_res_trans} {slider_bales_before} (%)',
                             'LEAF Avg',
-                            f'Mic entre {slider_mic[0]} e {slider_mic[1]}',
-                            f'UHM {option_uhm} de {slider_uhm}',]
+                            f'Mic between {slider_mic[0]} and {slider_mic[1]} (%)',
+                            f'UHM {option_uhm_trans} {slider_uhm} (%)',]
 
     # def class_uhm(valor):
     #     if 0 >= valor <= 0.79:

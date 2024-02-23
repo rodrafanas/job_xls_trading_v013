@@ -28,12 +28,17 @@ def extract_table_from_file(path_to_file):
         df['Lote'] = lote
         # lote = df['Lote'].str.replace('/', '', regex=False)
         # df['Lote'] = lote   
-        df['COR'] = '31-4'
+        # df['COR'] = '31-4'
 
         # Verifique se a coluna 'LEAF' existe no DataFrame
         if 'LEAF' not in df.columns:
             # Se não existir, crie uma coluna 'LEAF' com valores vazios
             df['LEAF'] = np.nan
+
+        # Verifique se a coluna 'COR' existe no DataFrame
+        if 'COR' not in df.columns:
+            # Se não existir, crie uma coluna 'COR' com valores vazios
+            df['COR'] = np.nan
 
         sel_cols = ['Lote','Fardo','P. Líquido', 'Mic', 'UHM', 'Res', 'COR', 'LEAF']
         df = df[sel_cols]
@@ -63,6 +68,10 @@ def stats_table(df,slider_bales_before=28, option_res= 'acima',
                 slider_uhm=1.10, option_uhm= 'acima'):
                 # slider_mic=df.Mic.mean().round(2), option_mic= 'acima',
                 # slider_uhm=df.UHM.mean().round(2), option_uhm= 'acima',):
+    # tratamento da Cor
+    df['COR'] = df['COR'].str.split('-').str[0]
+    df['COR'] = df['COR'].fillna(0)
+    df.dropna(inplace=True)
     # Agrupa por 'lote' e calcula a estatistica 
     df['UHM'] = df['UHM'].astype(float)
     resultados = df.groupby('Lote').agg(P_Liq_sum=pd.NamedAgg(column='P. Líquido', aggfunc=np.sum),
@@ -220,6 +229,13 @@ def stats_table(df,slider_bales_before=28, option_res= 'acima',
     UHM_class = UHM_class[cols_final]
 
     resultados = pd.merge(resultados,UHM_class,how='left',on='Lote')
+
+    COR_class = pd.crosstab(df.Lote,df.COR, margins=True, margins_name="total").add_prefix("COR_").reset_index()
+
+    COR_class.rename(columns={"COR_total":"Total_COR"},inplace=True)
+
+    resultados = pd.merge(resultados,COR_class,how='left',on='Lote')
+
 
 
     resultados['OFFERED'] = ""

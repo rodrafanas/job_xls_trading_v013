@@ -230,13 +230,16 @@ def stats_table(df,slider_bales_before=28, option_res= 'acima',
 
     resultados = pd.merge(resultados,UHM_class,how='left',on='Lote')
 
-    COR_class = pd.crosstab(df.Lote,df.COR, margins=True, margins_name="total").add_prefix("COR_").reset_index()
+    COR_class = pd.crosstab(df.Lote,df.COR, margins=True, margins_name="total", normalize='index').add_prefix("COR_").reset_index()
 
     COR_class.rename(columns={"COR_total":"Total_COR"},inplace=True)
+    
+    cols = list(set(COR_class.columns.tolist()) - set(['Lote']))
+    
+    for col in cols:
+        COR_class[col] = COR_class[col].mul(100).apply(lambda x: round(x, 2))
 
     resultados = pd.merge(resultados,COR_class,how='left',on='Lote')
-
-
 
     resultados['OFFERED'] = ""
     resultados['SOLD'] = False

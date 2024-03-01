@@ -8,9 +8,13 @@ import json
 
 warnings.filterwarnings("ignore")
 
+
+
+
 def extract_table_from_file(path_to_file):
     # st.write(path_to_file.name)
     if path_to_file.name != 'resumo.xlsx':
+        # st.write(path_to_file.name)
         df = pd.read_excel(path_to_file)
 
         indice_inicio = df.head(7).T.isna().sum().index[df.head(7).T.isna().sum()<4][0]
@@ -33,15 +37,43 @@ def extract_table_from_file(path_to_file):
         # Verifique se a coluna 'LEAF' existe no DataFrame
         if 'LEAF' not in df.columns:
             # Se não existir, crie uma coluna 'LEAF' com valores vazios
-            df['LEAF'] = np.nan
+            df['LEAF'] = 0
 
         # Verifique se a coluna 'COR' existe no DataFrame
         if 'COR' not in df.columns:
             # Se não existir, crie uma coluna 'COR' com valores vazios
-            df['COR'] = np.nan
+            df['COR'] = '0'
+
+        # Verifique se a coluna 'P. Líquido' existe no DataFrame
+        if 'P. Líquido' not in df.columns:
+            # Se não existir, crie uma coluna 'P. Líquido' com valores vazios
+            df['P. Líquido'] = 0
+
+        # Verifique se a coluna 'Mic' existe no DataFrame
+        if 'Mic' not in df.columns:
+            # Se não existir, crie uma coluna 'Mic' com valores vazios
+            df['Mic'] = 0
+
+        # Verifique se a coluna 'UHM' existe no DataFrame
+        if 'UHM' not in df.columns:
+            # Se não existir, crie uma coluna 'UHM' com valores vazios
+            df['UHM'] = 0
+
+        # Verifique se a coluna 'Res' existe no DataFrame
+        if 'Res' not in df.columns:
+            # Se não existir, crie uma coluna 'Res' com valores vazios
+            df['Res'] = 0            
 
         sel_cols = ['Lote','Fardo','P. Líquido', 'Mic', 'UHM', 'Res', 'COR', 'LEAF']
         df = df[sel_cols]
+
+        # df['Res'] = df['Res'].astype(float)
+        # df['Res'].dropna(inplace=True)
+
+        # if np.count_nonzero(df.Res) == 0:
+        #     st.write(path_to_file.name)
+        
+
     else:
         df = pd.read_excel(path_to_file)
 
@@ -50,30 +82,53 @@ def extract_table_from_file(path_to_file):
 def run_extract_table(files):
     
     # Itere sobre cada arquivo
+    lotes_duplicados = []
     df = pd.DataFrame()
     for file in files.values():    
         
         table = extract_table_from_file(file)
         if file.name != 'resumo.xlsx':
-            df =  pd.concat([df,table])
+            if not table['Fardo'].duplicated().any():
+                # print("Lote sem Fardos duplicados")
+                df =  pd.concat([df,table])
+            else:
+                lotes_duplicados.append(table['Lote'].unique()[0])     
+            
         else:
             df = table
 
-    return df
+    return df, lotes_duplicados
+
+def alerta(lista):
+    # Inicializamos uma string vazia para armazenar os números
+    numeros_frase = ""
+    # Iteramos pela lista e adicionamos os números à string
+    for i, num in enumerate(lista):
+        if i < len(lista) - 2:
+            numeros_frase += str(num) + ", "
+        elif i == len(lista) - 2:
+            numeros_frase += str(num) + " e "
+        else:
+            numeros_frase += str(num)
+
+    # Criamos a frase completa
+    observacao = f"Os Lotes {numeros_frase} com fardos duplicados e NÃO foram adicionados ao Resumo."
+    if lista != []:
+        st.warning("🚨 Atenção!! 🚨")
+        st.warning(observacao)
+
 
 
 def stats_table(df,slider_bales_before=28, option_res= 'acima',
-                # slider_mic_min=3.86, slider_mic_max=4.50, 
                 slider_mic = (3.58,4.5),
                 slider_uhm=1.10, option_uhm= 'acima'):
-                # slider_mic=df.Mic.mean().round(2), option_mic= 'acima',
-                # slider_uhm=df.UHM.mean().round(2), option_uhm= 'acima',):
     # tratamento da Cor
     df['COR'] = df['COR'].str.split('-').str[0]
-    df['COR'] = df['COR'].fillna(0)
+    # df['COR'] = df['COR'].fillna(0)
     df.dropna(inplace=True)
     # Agrupa por 'lote' e calcula a estatistica 
     df['UHM'] = df['UHM'].astype(float)
+    df['Res'] = df['Res'].astype(float)
     resultados = df.groupby('Lote').agg(P_Liq_sum=pd.NamedAgg(column='P. Líquido', aggfunc=np.sum),
                                         Mic_avg=pd.NamedAgg(column='Mic', aggfunc=np.mean),
                                         Mic_min=pd.NamedAgg(column='Mic', aggfunc=np.min),
@@ -88,7 +143,10 @@ def stats_table(df,slider_bales_before=28, option_res= 'acima',
                                         ).reset_index()
     ## Res
     if option_res == 'acima':
+            
+
         Res = df.groupby('Lote').agg(Bales_below_28=pd.NamedAgg(column='Res', aggfunc=lambda x: np.count_nonzero(x>=slider_bales_before)/np.count_nonzero(x))).reset_index()
+
     elif option_res == 'abaixo':
         Res = df.groupby('Lote').agg(Bales_below_28=pd.NamedAgg(column='Res', aggfunc=lambda x: np.count_nonzero(x<=slider_bales_before)/np.count_nonzero(x))).reset_index()
 
@@ -406,8 +464,8 @@ def solicita_parms_slider():
 def gera_df(files):
     
     # Extração dos arquivos xlsx
-    df = run_extract_table(files)
-    return df
+    df, lotes_duplicados = run_extract_table(files)
+    return df, lotes_duplicados
 
 
 def selecionar_lotes():
@@ -489,11 +547,14 @@ def main():
         slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm = func_sliders(rec_parm,params)
         
         ## Gera df
-        df = gera_df(xlsx_files)
+        df, lotes_duplicados = gera_df(xlsx_files)
     
         ## Processando os arquivos e gerando a tabela resultado
         st.header("Resumo dos Lotes:")
-        edited_df, df_resultado = processa_resultado(df,slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm, resumo_file, rec_parm)
+        edited_df, df_resultado = processa_resultado(df,slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm, resumo_file, 
+        rec_parm)
+
+        alerta(lotes_duplicados)
         
         st.header("Salvar Resumo dos Lotes:")      
         # salva_resultado2(df_resultado, params, slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm, folder_path)

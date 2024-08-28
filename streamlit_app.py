@@ -19,6 +19,16 @@ def extract_table_from_file(path_to_file):
 
         indice_inicio = df.head(7).T.isna().sum().index[df.head(7).T.isna().sum()<4][0]
         cols = df.iloc[indice_inicio].to_list()
+        try:
+            if 'UHM' in cols:
+                cols = cols
+            elif 'UHM' in df.columns.tolist():
+                cols = df.columns.tolist()
+            else:
+                raise ValueError("A coluna 'UHM' não foi encontrada em cols nem em df.columns.tolist()")
+        except Exception as e:
+            print(e)
+
         cols = ['NaN' if pd.isna(valor) else valor for valor in cols]
         # print(cols)
         df = df.set_axis(cols, axis = 1)
@@ -26,7 +36,15 @@ def extract_table_from_file(path_to_file):
         # Removendo as linhas com base nos índices
         df = df.drop(drop_indices).iloc[1:] #, inplace=True)
         df = df.reset_index(drop=True)
-        indice_final = df[df["Mic"].isna()].index[0]
+        # indice_final = df[df["Mic"].isna()].index[0]
+        # indice_final = df[df["UHM"].isna()].index[0]
+        try:
+            indice_final = df[df["UHM"].isna()].index[0]
+        except IndexError:
+            # Define indice_final como a quantidade de linhas de df caso o erro ocorra
+            indice_final = len(df)
+
+
         df =  df.drop(df.index[indice_final:])
         lote = path_to_file.name.replace('.xlsx', '')
         df['Lote'] = lote

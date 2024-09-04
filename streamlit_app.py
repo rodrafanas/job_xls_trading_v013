@@ -16,7 +16,7 @@ def extract_table_from_file(path_to_file):
     if path_to_file.name != 'resumo.xlsx':
         # st.write(path_to_file.name)
         df = pd.read_excel(path_to_file)
-
+        
         indice_inicio = df.head(7).T.isna().sum().index[df.head(7).T.isna().sum()<4][0]
         cols = df.iloc[indice_inicio].to_list()
         try:
@@ -51,6 +51,7 @@ def extract_table_from_file(path_to_file):
         # lote = df['Lote'].str.replace('/', '', regex=False)
         # df['Lote'] = lote   
         # df['COR'] = '31-4'
+    
 
         # Verifique se a coluna 'LEAF' existe no DataFrame
         if 'LEAF' not in df.columns:
@@ -84,6 +85,9 @@ def extract_table_from_file(path_to_file):
 
         sel_cols = ['Lote','Fardo','P. Líquido', 'Mic', 'UHM', 'Res', 'COR', 'LEAF']
         df = df[sel_cols]
+        
+        
+        # df['COR'] = df['COR'].str.replace('"','')
 
         # df['Res'] = df['Res'].astype(float)
         # df['Res'].dropna(inplace=True)
@@ -97,27 +101,7 @@ def extract_table_from_file(path_to_file):
 
     return df
 
-def run_extract_table(files):
-    
-    # Itere sobre cada arquivo
-    lotes_duplicados = []
-    df = pd.DataFrame()
-    for file in files.values():    
-        
-        table = extract_table_from_file(file)
-        if file.name != 'resumo.xlsx':
-            if not table['Fardo'].duplicated().any():
-                # print("Lote sem Fardos duplicados")
-                df =  pd.concat([df,table])
-            else:
-                lotes_duplicados.append(table['Lote'].unique()[0])     
-            
-        else:
-            df = table
-
-    return df, lotes_duplicados
-
-def alerta(lista):
+def alerta(lote,lista):
     # Inicializamos uma string vazia para armazenar os números
     numeros_frase = ""
     # Iteramos pela lista e adicionamos os números à string
@@ -130,17 +114,52 @@ def alerta(lista):
             numeros_frase += str(num)
 
     # Criamos a frase completa
-    observacao = f"Os Lotes {numeros_frase} com fardos duplicados e NÃO foram adicionados ao Resumo."
+    observacao = f"""O Lote {lote} apresenta os seguintes fardos duplicados {numeros_frase} .
+    O usuário deve alterar manuamente este Lote."""
     if lista != []:
         st.warning("🚨 Atenção!! 🚨")
         st.warning(observacao)
 
 
 
+def run_extract_table(files):
+    
+    # Itere sobre cada arquivo
+    lotes_duplicados = []
+    df = pd.DataFrame()
+    for file in files.values():    
+        
+        table = extract_table_from_file(file)
+        
+        if file.name != 'resumo.xlsx':
+            if not table['Fardo'].duplicated().any():
+                # print("Lote sem Fardos duplicados")
+                df =  pd.concat([df,table])
+                # st.header("Debugg11")
+                # st.write(df.head())
+            else:
+                lotes_duplicados.append(table['Lote'].unique()[0]) 
+                fardos_duplicados = table[table['Fardo'].duplicated()]['Fardo'].unique().tolist()
+                lotes_duplicado = table['Lote'].unique()[0]
+                alerta(lotes_duplicado,fardos_duplicados)
+                # df =  pd.concat([df,table])   
+                # st.header("Debugg22")
+                # st.write(lotes_duplicados)
+                # st.write(table['Fardo'].duplicated())
+            
+        else:
+            df = table
+    # st.header("Debugg")
+    # st.write(df.head())
+
+    return df, lotes_duplicados
+
 def stats_table(df,slider_bales_before=28, option_res= 'acima',
                 slider_mic = (3.58,4.5),
                 slider_uhm=1.10, option_uhm= 'acima'):
     # tratamento da Cor
+    # st.write(df.head())
+    df['COR'] = df['COR'].str.replace('"', '')
     df['COR'] = df['COR'].str.split('-').str[0]
     # df['COR'] = df['COR'].fillna(0)
     df.dropna(inplace=True)
@@ -566,17 +585,22 @@ def main():
         
         ## Gera df
         df, lotes_duplicados = gera_df(xlsx_files)
-    
-        ## Processando os arquivos e gerando a tabela resultado
-        st.header("Resumo dos Lotes:")
-        edited_df, df_resultado = processa_resultado(df,slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm, resumo_file, 
-        rec_parm)
+        if lotes_duplicados != []:
+            st.warning(f"Atenção Fardos com mais de uma medida no lote {lotes_duplicados}")
+            # alerta(lotes_duplicados)
 
-        alerta(lotes_duplicados)
+        if df.shape[0] > 0:
         
-        st.header("Salvar Resumo dos Lotes:")      
-        # salva_resultado2(df_resultado, params, slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm, folder_path)
-        salva_resultado2(edited_df, df_resultado, slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm)
+            ## Processando os arquivos e gerando a tabela resultado
+            st.header("Resumo dos Lotes:")
+            edited_df, df_resultado = processa_resultado(df,slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm, resumo_file, 
+            rec_parm)
+
+            
+            
+            st.header("Salvar Resumo dos Lotes:")      
+            # salva_resultado2(df_resultado, params, slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm, folder_path)
+            salva_resultado2(edited_df, df_resultado, slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm)
             
     else:
         st.error(f"Por favor selecione um Lote válido.")

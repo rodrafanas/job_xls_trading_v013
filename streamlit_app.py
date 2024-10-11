@@ -101,6 +101,121 @@ def extract_table_from_file(path_to_file):
 
     return df
 
+def extract_table_from_file_secon(path_to_file):
+    # st.write(path_to_file.name)
+    if path_to_file.name != 'resumo.xlsx':
+        # st.write(path_to_file.name)
+        df = pd.read_excel(path_to_file)
+        
+        indice_inicio = df.head(7).T.isna().sum().index[df.head(7).T.isna().sum()<4][0]
+        cols = df.iloc[indice_inicio].to_list()
+        try:
+            if 'UHM' in cols:
+                cols = cols
+            elif 'UHM' in df.columns.tolist():
+                cols = df.columns.tolist()
+            else:
+                raise ValueError("A coluna 'UHM' não foi encontrada em cols nem em df.columns.tolist()")
+        except Exception as e:
+            print(e)
+
+        cols = ['NaN' if pd.isna(valor) else valor for valor in cols]
+        # print(cols)
+        df = df.set_axis(cols, axis = 1)
+        drop_indices = df.head(7).T.isna().sum().index[df.head(7).T.isna().sum()>4].tolist()
+        # Removendo as linhas com base nos índices
+        df = df.drop(drop_indices).iloc[1:] #, inplace=True)
+        df = df.reset_index(drop=True)
+        # indice_final = df[df["Mic"].isna()].index[0]
+        # indice_final = df[df["UHM"].isna()].index[0]
+        try:
+            indice_final = df[df["UHM"].isna()].index[0]
+        except IndexError:
+            # Define indice_final como a quantidade de linhas de df caso o erro ocorra
+            indice_final = len(df)
+
+
+        df =  df.drop(df.index[indice_final:])
+        lote = path_to_file.name.replace('.xlsx', '')
+        df['Lote'] = lote
+        # lote = df['Lote'].str.replace('/', '', regex=False)
+        # df['Lote'] = lote   
+        # df['COR'] = '31-4'
+    
+
+        # Verifique se a coluna 'LEAF' existe no DataFrame
+        if 'LEAF' not in df.columns:
+            # Se não existir, crie uma coluna 'LEAF' com valores vazios
+            df['LEAF'] = 0
+
+        # Verifique se a coluna 'COR' existe no DataFrame
+        if 'COR' not in df.columns:
+            # Se não existir, crie uma coluna 'COR' com valores vazios
+            df['COR'] = '0'
+
+        # Verifique se a coluna 'P. Líquido' existe no DataFrame
+        if 'P. Líquido' not in df.columns:
+            # Se não existir, crie uma coluna 'P. Líquido' com valores vazios
+            df['P. Líquido'] = 0
+
+        # Verifique se a coluna 'Mic' existe no DataFrame
+        if 'Mic' not in df.columns:
+            # Se não existir, crie uma coluna 'Mic' com valores vazios
+            df['Mic'] = 0
+
+        # Verifique se a coluna 'UHM' existe no DataFrame
+        if 'UHM' not in df.columns:
+            # Se não existir, crie uma coluna 'UHM' com valores vazios
+            df['UHM'] = 0
+
+        # Verifique se a coluna 'Res' existe no DataFrame
+        if 'Res' not in df.columns:
+            # Se não existir, crie uma coluna 'Res' com valores vazios
+            df['Res'] = 0  
+        if 'Máquina' not in df.columns:
+            df['Máquina'] = 0
+        df['Aplicação'] = "Negado"
+          
+        if df['Máquina'].isnull().all():
+            df['Máquina'] = df['NaN']   
+    
+        sel_cols = ['Lote','Fardo','P. Líquido', 'Máquina', 'Mic', 'UHM', 'Res', 'COR', 'LEAF', 'Aplicação']
+        df = df[sel_cols]
+        #st.dataframe(df)  
+        # df['COR'] = df['COR'].str.replace('"','')
+
+        # df['Res'] = df['Res'].astype(float)
+        # df['Res'].dropna(inplace=True)
+
+        # if np.count_nonzero(df.Res) == 0:
+        #     st.write(path_to_file.name)
+        
+
+    else:
+        df = pd.read_excel(path_to_file)
+
+    return df
+
+def alerta(lote,lista):
+    # Inicializamos uma string vazia para armazenar os números
+    numeros_frase = ""
+    # Iteramos pela lista e adicionamos os números à string
+    for i, num in enumerate(lista):
+        if i < len(lista) - 2:
+            numeros_frase += str(num) + ", "
+        elif i == len(lista) - 2:
+            numeros_frase += str(num) + " e "
+        else:
+            numeros_frase += str(num)
+
+    # Criamos a frase completa
+    observacao = f"""O Lote {lote} apresenta os seguintes fardos duplicados {numeros_frase} .
+    O usuário deve alterar manuamente este Lote."""
+    if lista != []:
+        st.warning("🚨 Atenção!! 🚨")
+        st.warning(observacao)
+
+
 def alerta(lote,lista):
     # Inicializamos uma string vazia para armazenar os números
     numeros_frase = ""
@@ -527,6 +642,231 @@ def selecionar_lotes():
                 xlsx_files[int(idx)] = uploaded_file
     return xlsx_files, resumo_file, parms_file
 
+
+def gerar_df_geral(arquivos_lotes):
+    df = pd.DataFrame()
+    for arquivo in arquivos_lotes:
+        tabela = extract_table_from_file_secon(arquivo)
+        df = pd.concat([df, tabela], ignore_index=True)
+    if 'df_geral' not in st.session_state:
+        st.session_state.df_geral = df
+    
+    return st.session_state.df_geral
+
+def selecioneOLote(lista_lotes, df): 
+    opcoes = ['Selecione um lote'] + lista_lotes.Lote.to_list()
+    caixaSelecao = st.selectbox('Visualizar lote', opcoes)
+    
+    if caixaSelecao != 'Selecione um lote':
+        st.write(f'Expandir lote {caixaSelecao}')
+        lote_exibido = st.session_state.df_geral[st.session_state.df_geral['Lote'] == caixaSelecao]
+        lote_editado = st.data_editor(lote_exibido, hide_index=True, disabled=['Lote', 'Fardo', 'P. Líquido', 'Mic', 'UHM', 'Res', 'COR', 'LEAF', 'Máquina'])
+        st.session_state.df_geral.loc[st.session_state.df_geral['Lote'] == caixaSelecao] = lote_editado
+    else:
+        st.write("Nenhum lote selecionado.")
+
+
+def selecionar_pelo_contrato(df_geral):
+    opcoes = df_geral['Aplicação'].unique()
+    contrato_escolhido = st.selectbox('Selecione uma aplicação', opcoes)
+    df_contrato = df_geral[df_geral['Aplicação'] == contrato_escolhido]
+    st.data_editor(df_contrato, hide_index=True, disabled=['Lote', 'Fardo', 'P.Líquido', 'Mic', 'UHM', 'Res', 'COR', 'LEAF', 'Máquina'])
+
+def mmToP(mm):
+    return mm * 2.83465
+
+def gerar_formulario():
+    st.markdown("""<style>
+                .stTextInput {
+                    width: 400px
+                }
+                </style>""",
+                unsafe_allow_html=True
+                )
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        instrucao = st.text_input('Instrução')
+        filial = st.text_input('Filial')
+        codigo = st.text_input('Código')
+        veiculo = st.text_input('Veículo')
+        nota_fiscal = st.text_input('Nota Fiscal')
+        pedvenda = st.text_input('Ped. Venda')
+    with col2:
+        empresa = st.text_input('Empresa')
+        remente = st.text_input('Rementente')
+        destinatario = st.text_input('Detinatário')
+        enedereco = st.text_input('Endereço')
+        bloco = st.text_input('Bloco')
+        data_saida = st.date_input('Data Saída', format=('DD/MM/YYYY'))
+
+    return instrucao,filial,codigo, veiculo, nota_fiscal, empresa, remente, destinatario, enedereco, pedvenda, data_saida, bloco
+  
+def centralizar_texto_tabela(c, texto, largura_celula, x, y):
+    largura_texto = c.stringWidth(texto, "Helvetica", 6)
+    x += (largura_celula - largura_texto) / 2 
+    c.drawString(x, y, texto)
+    #c.drawString(x, y, texto)
+
+def alinhar_texto(txt, c, instrucao, tamanho, altura, posicao):
+    if posicao == 'direita':
+        text_to_right = f'{txt}: {instrucao}'
+        margem_esquerda = mmToP(203) - (c.stringWidth(text_to_right,'Helvetica', tamanho))
+        c.drawString(margem_esquerda, altura, f'{text_to_right}')
+    else:
+        text_to_center = f'{txt}: {instrucao}'
+        margem_esquerda = (mmToP(210) - c.stringWidth(text_to_center,'Helvetica', tamanho)) / 2
+        c.drawString(margem_esquerda, altura, f'{text_to_center}')
+
+def juntar_dado(c, txt1, txt2, template1, template2, altura, tamanho):
+    primeiro_texto = f'{txt1}: {template1}'
+    margem = (c.stringWidth(primeiro_texto, 'Helvetica', tamanho)) + mmToP(20)
+    c.drawString(mmToP(7), altura, primeiro_texto)
+    c.drawString(margem, altura, f'{txt2}: {template2}')
+
+def alinha_celula_somatoria(c, texto, largura_celula, numero, y, tamanho, posicao):
+    if posicao == 'centro':
+        numero -= 1
+        largura_texto = c.stringWidth(texto ,'Helvetica', tamanho)
+        margem_esquerda = mmToP(7) + numero * largura_celula + (largura_celula - largura_texto) / 2
+        c.drawString(margem_esquerda, y, texto)
+        
+
+
+@st.cache_data
+def gerar_pdf(contrato_escolhido, tabela_contrato, instrucao,filial,codigo, veiculo, nota_fiscal, empresa, remente, destinatario, enedereco, pedvenda, data_saida, bloco):
+    data_formatada = data_saida.strftime('%d/%m/%Y')
+    tabela_pdf = tabela_contrato[['Fardo', 'COR', 'P. Líquido', 'Máquina']]
+    tabela_pdf.columns = ['Fardo', 'Tipo', 'P. Líquido', 'Prensa']
+    st.dataframe(tabela_pdf, hide_index=True)
+    hora_atual = datetime.now().strftime('%H:%M:%S')
+    data_atual = datetime.now().strftime("%d/%m/%Y")
+    buffer = BytesIO()
+    c = canvas.Canvas(buffer, pagesize=A4)
+    # imagem
+    c.drawImage('logoCR.png', mmToP(7), mmToP(283), width=30, height=15)
+
+    # strings tamanho 6
+    c.setFont('Helvetica', 6)
+    c.drawString(mmToP(7), mmToP(280), 'SIGA / AGRAR750 / v. 12', )
+    c.drawString(mmToP(7), mmToP(276.5), f'Hora . . .: {hora_atual}')
+    c.drawString(mmToP(7), mmToP(273), f'Empresa: {empresa}')
+    c.drawString(mmToP(7), mmToP(269.5), f'Filial: {filial}')
+    c.drawString(mmToP(7), mmToP(264), f'Remetente: {remente}')
+    c.drawString(mmToP(7), mmToP(260.5), f'Código: {codigo}')
+    c.drawString(mmToP(7), mmToP(250), f'Contrato: {contrato_escolhido}')
+    c.drawString(mmToP(7), mmToP(246.5), f'Ped. Venda: {pedvenda}')
+    c.drawString(mmToP(7), mmToP(237), f'Bloco: {bloco}')
+
+    #textos na mesma linha
+    juntar_dado(c, 'Destinatário', 'Endereço', destinatario, enedereco, mmToP(257), 6)
+    juntar_dado(c, 'Veículo', 'Data Saída', veiculo, data_formatada, mmToP(253.5), 6)
+    #juntar_dado(dado1, c, 'Endereço', enedereco, mmToP(257), 6)
+
+    #textos alinhados (centro ou direita)
+    alinhar_texto('Folha . . .', c, 1, 6, mmToP(280), 'direita')
+    alinhar_texto('Dt. Emissão', c, data_atual, 6, mmToP(276.5), 'direita')
+    alinhar_texto('Romaneio de Saída de Fardos', c, '', 6, mmToP(280),'centro')
+
+    c.setFont('Helvetica', 8)
+    alinhar_texto('Hora', c, hora_atual, 8, mmToP(12.5), 'direita')
+
+    #texto tamanho 15 alinhado
+    c.setFont('Helvetica-Bold', 15)
+    alinhar_texto('Instrução', c, instrucao, 15, mmToP(273), 'centro')
+
+    c.setFont('Helvetica-Bold', 6)
+    c.drawString(mmToP(7), mmToP(243), f'OBS:Este romaneio é parte integrante da nota fiscal {nota_fiscal}')
+
+    # linhas
+    c.setLineWidth(0.5)
+    c.line(mmToP(7), mmToP(289), mmToP(203), mmToP(289))
+    c.line(mmToP(7), mmToP(268), mmToP(203), mmToP(268))
+    c.line(mmToP(7), mmToP(241), mmToP(203), mmToP(241))
+    c.line(mmToP(7), mmToP(16), mmToP(203), mmToP(16))
+    c.line(mmToP(7), mmToP(11), mmToP(203), mmToP(11))
+
+    #tabela
+    num_colunas = len(tabela_pdf.columns)
+    num_linhas = len(tabela_pdf)
+    x_inicial = mmToP(7)
+    y_inicial = mmToP(230)
+    largura_celula = mmToP(12.24)
+    altura_celula = mmToP(2.7)
+    y = y_inicial
+    conjuntos_por_linha = 4
+    x = x_inicial
+
+    for coluna in tabela_pdf.columns:
+        for coluna in tabela_pdf.columns: 
+            c.rect(x, y, largura_celula, altura_celula, fill=False) 
+            #c.drawString(x + 2, y + 2, str(coluna))
+            c.setFont('Helvetica-Bold', 6)
+            centralizar_texto_tabela(c, str(coluna), largura_celula, x, y + 1.8)
+
+            x += largura_celula 
+
+    y -= altura_celula
+
+    c.setFont('Helvetica', 6)
+
+    for linha in range(0, num_linhas, conjuntos_por_linha):  
+        x = x_inicial
+
+        for i in range(conjuntos_por_linha):
+            if linha + i < num_linhas:
+                dados_linha = tabela_pdf.iloc[linha + i]
+                for coluna in range(num_colunas):
+                    dado = dados_linha[coluna]
+                    c.rect(x, y, largura_celula, altura_celula, fill=False)
+                    centralizar_texto_tabela(c, str(dado), largura_celula, x, y + 1.8)
+                    #c.drawString(x + 2, y + 2, str(dado)) 
+                    x += largura_celula
+
+            else:
+                for coluna in range(num_colunas):
+                    c.rect(x, y, largura_celula, altura_celula, fill=False)  
+                    x += largura_celula
+
+        y -= altura_celula
+        x = x_inicial
+
+    # calculos e blocos
+    altura_inical = y - mmToP(5)
+    tamanho_celula = mmToP(18)
+    peso_total_bloco = tabela_pdf['P. Líquido'].sum()
+    alinha_celula_somatoria(c, 'Bloco', tamanho_celula, 1, altura_inical, 9, 'centro')
+    alinha_celula_somatoria(c, 'Qtd de blocos', tamanho_celula, 2, altura_inical, 9, 'centro')
+    alinha_celula_somatoria(c, 'Tipo', tamanho_celula, 3, altura_inical, 9, 'centro')
+    alinha_celula_somatoria(c, 'Peso Total', tamanho_celula, 4, altura_inical, 9, 'centro')
+
+    c.line(mmToP(7), altura_inical - mmToP(1), tamanho_celula * 4 + mmToP(7), altura_inical - mmToP(1))
+
+
+    c.showPage()
+    c.save()
+    buffer.seek(0)
+    return buffer
+
+def selecao_contratos(df):
+    contratos = df['Aplicação'].unique()  
+    caixaSelecao = st.selectbox('Visualizar lote', contratos)
+
+    if caixaSelecao != 'Negado':
+        contrato_escolhido = df[df['Aplicação'] == caixaSelecao]
+        instrucao,filial,codigo, veiculo, nota_fiscal, empresa, remente, destinatario, enedereco, pedvenda, data_saida, bloco = gerar_formulario()
+        pdf_buffer = gerar_pdf(caixaSelecao, contrato_escolhido, instrucao,filial,codigo, veiculo, nota_fiscal, empresa, remente, destinatario, enedereco, pedvenda, data_saida, bloco)
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_pdf:
+            tmp_pdf.write(pdf_buffer.read())
+            tmp_pdf_path = tmp_pdf.name
+        view(tmp_pdf_path)
+        with open(tmp_pdf_path, "rb") as f:
+            pdf_bytes = f.read()
+        st.download_button('Salvar contrato', data=pdf_bytes, file_name=f'{caixaSelecao}.pdf')
+
+    else: 
+        st.write('Selecione um contrato válido')
+       
 
 def func_sliders(rec_parm,params):
     if rec_parm == 1:

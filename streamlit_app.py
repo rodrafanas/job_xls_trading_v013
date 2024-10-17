@@ -11,19 +11,35 @@ from io import BytesIO
 import tempfile
 from streamlit_pdf_viewer import pdf_viewer as view
 from datetime import datetime
+from dotenv import load_dotenv
+import bcrypt
 
-warnings.filterwarnings("ignore")
+load_dotenv()
+
+def checar_senha(senha_hashed, senha_usuario):
+    return bcrypt.checkpw(senha_usuario.encode('utf-8'), senha_hashed)
+
 
 def tela_login():
     st.title("Login")
     usuario = st.text_input("Usuário")
     senha = st.text_input('Senha', type='password')
+
+    usuario_armazenado = os.getenv('Usuario')
+    senha_armazenada = os.getenv('PASSWORD_HASHED')
+
+    if senha_armazenada:
+        senha_armazenada = senha_armazenada.encode('utf-8')
+
     if st.button('Entrar'):
-        if usuario == 'Vequis' and senha == 'Vequis@2024':
+        if usuario == usuario_armazenado and checar_senha(senha_armazenada, senha):
             st.session_state.logged_in = True
             st.success('Logado com sucesso')
-        else: 
+        else:
             st.error('Usuário ou senha incorretos')
+
+
+warnings.filterwarnings("ignore")
 
 def tela_logado():
     def extract_table_from_file(path_to_file):

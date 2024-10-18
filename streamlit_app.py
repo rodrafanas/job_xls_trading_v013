@@ -909,7 +909,60 @@ def tela_logado():
 
         else: 
             st.write('Selecione um contrato válido')
+    def input_reemblocar():
+        on = st.toggle("Reemblocar?")
+        reemblocar = 1
+
+        if on:
+            st.write("Feature activated!")
+            reemblocar = 2
+        return reemblocar
+    
+    def input_parametros(parms_file):
+
+        ## Checa se tem params anteriores
+        rec_parm, params = check_params(parms_file)
+
+        ## Roda sliders        
+        slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm = func_sliders(rec_parm,params)
+
+        return rec_parm, slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm
+        
+
+    def input_contratos(reemblocar,parms_file):
+        if reemblocar == 1:
+            st.title("Entrada de Contrato")
+
+            contratos = st.text_input(f"Nome do contrato", "")
+            pesos = st.text_input(f"Peso do contrato", "")
             
+            rec_parm, slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm = input_parametros(parms_file)
+        
+        if reemblocar == 2:
+            st.title("Entrada de Contratos")
+
+            # Entrada para o número de contratos
+            num_contratos = st.number_input("Quantos contratos deseja adicionar?", min_value=1, step=1)
+
+            # Lista para armazenar os nomes dos contratos
+            contratos = []
+
+            # Gerar campos de texto dinamicamente com base no número de contratos
+            for i in range(num_contratos):
+                contrato = st.text_input(f"Nome do contrato {i + 1}", "")
+                contratos.append(contrato)
+
+            # Exibir a lista de contratos inseridos
+            if st.button("Mostrar contratos"):
+                st.write("Contratos adicionados:")
+                for idx, contrato in enumerate(contratos, 1):
+                    st.write(f"{idx}. {contrato}")
+        
+        return contratos, pesos, rec_parm, slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm
+
+        
+
+
     def func_sliders(rec_parm,params):
         if rec_parm == 1:
             ## Rodar indica_parms_slider...
@@ -961,11 +1014,20 @@ def tela_logado():
         # if os.path.exists(folder_path) and os.path.isdir(folder_path):
         if xlsx_files != []:        
             st.success(f"Carregando os Lotes!")
-            ## Checa se tem params anteriores
-            rec_parm, params = check_params(parms_file)
 
-            ## Roda sliders        
-            slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm = func_sliders(rec_parm,params)
+            # Deseja Reemblocar? Sim ou Não.
+
+            reemblocar = input_reemblocar()
+
+            # Executa a função se o arquivo for rodado diretamente
+            contratos, pesos, rec_parm, slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm = input_contratos(reemblocar, parms_file)
+
+
+            # ## Checa se tem params anteriores
+            # rec_parm, params = check_params(parms_file)
+
+            # ## Roda sliders        
+            # slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm = func_sliders(rec_parm,params)
             
             ## Gera df
             df, lotes_duplicados = gera_df(xlsx_files)

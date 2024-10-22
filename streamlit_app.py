@@ -514,8 +514,34 @@ def tela_logado():
         st.write(f'UHM {option_uhm} de:', slider_uhm)
         return slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm
 
-    def processa_resultado(df,slider_bales_before, option_res,
-                    slider_mic, slider_uhm, option_uhm, resumo_file, rec_parm):
+    def extrair_contrato(contratos):
+        # Verifica se há apenas um contrato no dicionário
+        if len(contratos) == 1:
+            # Obtém o primeiro (e único) contrato
+            nome_contrato = next(iter(contratos))
+            dados_contrato = contratos[nome_contrato]
+
+            # Extrai as variáveis do contrato
+            slider_bales_before = dados_contrato["slider_bales_before"]
+            option_res = dados_contrato["option_res"]
+            slider_mic = dados_contrato["slider_mic"]
+            slider_uhm = dados_contrato["slider_uhm"]
+            option_uhm = dados_contrato["option_uhm"]
+            rec_parm = dados_contrato["rec_parm"]
+
+            
+            # Retorna as variáveis
+            return slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm, rec_parm
+        
+        else:
+            st.error("Existem múltiplos contratos ou nenhum contrato disponível.")
+            return None, None, None, None, None, None, None
+
+
+
+    def processa_resultado(df,contratos, resumo_file):
+        slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm, rec_parm = extrair_contrato(contratos)
+        
         resultado = stats_table(df,slider_bales_before, option_res,
                     slider_mic, slider_uhm, option_uhm)
         if rec_parm == 1:
@@ -534,6 +560,43 @@ def tela_logado():
         edited_df = st.data_editor(resultado2.reset_index(drop=False).set_index('Lote',drop=False), disabled=['Lote', 'Net weight', 'Mic(avg)', 'Mic(min)', 'Mic(max)'])
         return edited_df, resultado2
 
+    # Função auxiliar para calcular o rigor de cada contrato
+    def calcular_rigor(dados_contrato):
+        rigor = 0
+        
+        # Critério bales/res (quanto maior o res exigido, mais rigoroso)
+        if dados_contrato["option_res"] == 'acima':
+            rigor += dados_contrato["slider_bales_before"]
+        else:
+            rigor -= dados_contrato["slider_bales_before"]
+
+        # Critério mic (quanto maior o mic, mais rigoroso)
+        rigor += dados_contrato["slider_mic"][0]
+
+        # Critério uhm (quanto maior o uhm, mais rigoroso)
+        if dados_contrato["option_uhm"] == 'acima':
+            rigor += dados_contrato["slider_uhm"]
+        else:
+            rigor -= dados_contrato["slider_uhm"]
+
+        return rigor
+
+    def comparar_contratos(contratos):
+        # Lista para armazenar os contratos ordenados por rigorosidade
+        contratos_rigorosos = []
+
+        # Calcular rigor para cada contrato
+        for nome_contrato, dados_contrato in contratos.items():
+            rigor = calcular_rigor(dados_contrato)
+            contratos_rigorosos.append((nome_contrato, dados_contrato, rigor))
+
+        # Ordenar os contratos pelo valor de rigor (do mais rigoroso para o menos rigoroso)
+        contratos_rigorosos.sort(key=lambda x: x[2], reverse=True)
+
+        # Reconstruir o dicionário de contratos na nova ordem
+        contratos_ordenados = {nome_contrato: dados_contrato for nome_contrato, dados_contrato, _ in contratos_rigorosos}
+
+        return contratos_ordenados
 
 
     # def salva_parms(folder_path, slider_bales_before, option_res,
@@ -593,14 +656,14 @@ def tela_logado():
 
 
 
-    def solicita_parms_slider():
+    def solicita_parms_slider(rk):
         ## Filtro Res
         option_res = st.selectbox(
             'Selecione criterio de escolha:',
-            ('acima', 'abaixo'))
+            ('acima', 'abaixo'), key='res'+str(rk))
 
         # Solicita ao usuário os parâmetros
-        slider_bales_before = st.slider(f'Resistência {option_res} de:', 20, 40, 28)
+        slider_bales_before = st.slider(f'Resistência {option_res} de:', 20, 40, 28, key='bales'+str(rk))
         st.write(f'Resistência {option_res} de:', slider_bales_before)
 
         
@@ -611,15 +674,15 @@ def tela_logado():
 
         slider_mic = st.slider(
             f'Mic entre:', 
-            2.00, 5.00, (3.70, 4.90))
+            2.00, 5.00, (3.70, 4.90), key='mic'+str(rk))
         # st.write(f'Mic entre {slider_mic[0]} e {slider_mic[1]}')
         st.write(f"Mic entre {float(slider_mic[0])} e {float(slider_mic[1])}")
         ## Filtro UHM
         option_uhm = st.selectbox(
             'Selecione criterio de escolha:',
-            ('acima', 'abaixo'), key='uhm')
+            ('acima', 'abaixo'), key='uhm'+str(rk))
 
-        slider_uhm = st.slider(f'UHM {option_uhm} de:', 0.00, 3.00, 1.11)
+        slider_uhm = st.slider(f'UHM {option_uhm} de:', 0.00, 3.00, 1.11, key='s_uhm'+str(rk))
         st.write(f'UHM {option_uhm} de:', slider_uhm)
         return slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm
 
@@ -918,52 +981,104 @@ def tela_logado():
             reemblocar = 2
         return reemblocar
     
-    def input_parametros(parms_file):
+    def input_parametros(parms_file,rk):
 
         ## Checa se tem params anteriores
         rec_parm, params = check_params(parms_file)
 
         ## Roda sliders        
-        slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm = func_sliders(rec_parm,params)
+        slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm = func_sliders(rec_parm,params,rk)
 
         return rec_parm, slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm
         
 
-    def input_contratos(reemblocar,parms_file):
-        if reemblocar == 1:
-            st.title("Entrada de Contrato")
+    # def input_contratos(reemblocar,parms_file):
+    #     if reemblocar == 1:
+    #         st.title("Entrada do Contrato")
 
-            contratos = st.text_input(f"Nome do contrato", "")
-            pesos = st.text_input(f"Peso do contrato", "")
+    #         contratos = st.text_input(f"Nome do contrato", "")
+    #         pesos = st.text_input(f"Peso do contrato", "")
             
-            rec_parm, slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm = input_parametros(parms_file)
+    #         rec_parm, slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm = input_parametros(parms_file)
         
-        if reemblocar == 2:
-            st.title("Entrada de Contratos")
+    #     if reemblocar == 2:
+    #         st.title("Entrada dos Contratos")
+
+    #         # Entrada para o número de contratos
+    #         num_contratos = st.number_input("Quantos contratos deseja adicionar?", min_value=1, step=1)
+
+    #         # Lista para armazenar os nomes dos contratos
+    #         contratos = []
+
+    #         # Gerar campos de texto dinamicamente com base no número de contratos
+    #         for i in range(num_contratos):
+    #             contrato = st.text_input(f"Nome do contrato {i + 1}", "")
+    #             contratos.append(contrato)
+
+    #         # Exibir a lista de contratos inseridos
+    #         if st.button("Mostrar contratos"):
+    #             st.write("Contratos adicionados:")
+    #             for idx, contrato in enumerate(contratos, 1):
+    #                 st.write(f"{idx}. {contrato}")
+        
+    #     return contratos, pesos, rec_parm, slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm
+    
+    
+    def input_contratos(reemblocar, parms_file):
+        contratos = {}
+
+        if reemblocar == 1:
+            st.title("Entrada do Contrato")
+
+            # Entrada para um único contrato
+            nome_contrato = st.text_input("Nome do contrato", "")
+            peso_contrato = st.text_input("Peso do contrato", "")
+
+            # Parâmetros do contrato
+            rec_parm, slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm = input_parametros(parms_file,0)
+
+            # Adiciona os dados ao dicionário
+            contratos[nome_contrato] = {
+                "peso": peso_contrato,
+                "rec_parm": rec_parm,
+                "slider_bales_before": slider_bales_before,
+                "option_res": option_res,
+                "slider_mic": slider_mic,
+                "slider_uhm": slider_uhm,
+                "option_uhm": option_uhm
+            }
+
+        elif reemblocar == 2:
+            st.title("Entrada dos Contratos")
 
             # Entrada para o número de contratos
             num_contratos = st.number_input("Quantos contratos deseja adicionar?", min_value=1, step=1)
 
-            # Lista para armazenar os nomes dos contratos
-            contratos = []
-
             # Gerar campos de texto dinamicamente com base no número de contratos
             for i in range(num_contratos):
-                contrato = st.text_input(f"Nome do contrato {i + 1}", "")
-                contratos.append(contrato)
+                nome_contrato = st.text_input(f"Nome do contrato {i + 1}", "")
+                peso_contrato = st.text_input(f"Peso do contrato {i + 1}", "")
 
-            # Exibir a lista de contratos inseridos
-            if st.button("Mostrar contratos"):
-                st.write("Contratos adicionados:")
-                for idx, contrato in enumerate(contratos, 1):
-                    st.write(f"{idx}. {contrato}")
+                # Parâmetros do contrato
+                rec_parm, slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm = input_parametros(parms_file,i)
+
+                # Adiciona os dados ao dicionário
+                contratos[nome_contrato] = {
+                    "peso": peso_contrato,
+                    "rec_parm": rec_parm,
+                    "slider_bales_before": slider_bales_before,
+                    "option_res": option_res,
+                    "slider_mic": slider_mic,
+                    "slider_uhm": slider_uhm,
+                    "option_uhm": option_uhm
+                }
+
+        return contratos
+
         
-        return contratos, pesos, rec_parm, slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm
-
-        
 
 
-    def func_sliders(rec_parm,params):
+    def func_sliders(rec_parm,params,rk):
         if rec_parm == 1:
             ## Rodar indica_parms_slider...
             st.header("Filtrando dos Lotes:")
@@ -972,7 +1087,7 @@ def tela_logado():
         else:
             # Solicita ao usuário os parâmetros
             st.title("Informe os parâmetros")
-            slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm = solicita_parms_slider()
+            slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm = solicita_parms_slider(rk)
         
         return slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm
 
@@ -1020,7 +1135,9 @@ def tela_logado():
             reemblocar = input_reemblocar()
 
             # Executa a função se o arquivo for rodado diretamente
-            contratos, pesos, rec_parm, slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm = input_contratos(reemblocar, parms_file)
+            # contratos, pesos, rec_parm, slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm = input_contratos(reemblocar, parms_file)
+            contratos = input_contratos(reemblocar, parms_file)
+            # st.write(contratos)
 
 
             # ## Checa se tem params anteriores
@@ -1039,8 +1156,16 @@ def tela_logado():
             
                 ## Processando os arquivos e gerando a tabela resultado
                 st.header("Resumo dos Lotes:")
-                edited_df, df_resultado = processa_resultado(df,slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm, resumo_file, 
-                rec_parm)
+                # edited_df, df_resultado = processa_resultado(df,slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm, resumo_file, rec_parm)
+                if len(contratos) == 1:
+                    edited_df, df_resultado = processa_resultado(df,contratos,resumo_file)
+
+                if len(contratos) > 1:
+                    # ... define o rigor/ordem dos contratos.
+                    contratos = comparar_contratos(contratos)
+                    st.write(contratos)
+                    # faz um for para reemblocar os lotes/fardos a partir do contrato mais rigoroso.
+
 
                 st.header("Salvar Resumo dos Lotes:")      
                 # salva_resultado2(df_resultado, params, slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm, folder_path)
@@ -1073,7 +1198,9 @@ def tela_logado():
 
 
 if 'logged_in' not in st.session_state:
-    st.session_state.logged_in=False
+    # st.session_state.logged_in=False
+    st.session_state.logged_in=True # retirar em prod
+    
 
 if st.session_state.logged_in:
     tela_logado()

@@ -788,7 +788,7 @@ def tela_logado():
         return processed_data
 
 
-    def salva_resultado2(edited_df, df_resultado, contratos):
+    def salva_resultado2(edited_df, contratos):
         slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm, _, _ = extrair_contrato(contratos)
         st.download_button(label='Download Excel',
                         data=to_excel(edited_df),
@@ -807,6 +807,26 @@ def tela_logado():
             mime='application/json',
             key="parms"
         )
+
+    def salva_resultado3(edited_df, contratos):
+            slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm, _, _ = extrair_contrato(contratos)
+            st.download_button(label='Download Excel',
+                            data=to_excel(edited_df),
+                            file_name='resumo.xlsx',
+                            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                            key="resumo3")
+
+            # Chama a função modificada para obter os dados JSON
+            dados_json = salva_parms(slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm)
+            
+            # Cria o botão de download
+            st.download_button(
+                label="Download parms.json",
+                data=dados_json,
+                file_name="parms.json",
+                mime='application/json',
+                key="parms3"
+            )
 
 
 
@@ -1041,7 +1061,7 @@ def tela_logado():
 
     def editar_emblocagem(df_geral):
         opcoes = df_geral['Contrato'].unique()
-        contrato_escolhido = st.selectbox('Selecione uma aplicação', opcoes)
+        contrato_escolhido = st.selectbox('Selecione um Contrato', opcoes)
 
 
 
@@ -1071,14 +1091,30 @@ def tela_logado():
 
 
     def selecionar_pelo_contrato(df_geral):
-        st.write("Entrei no selecionar pelo contrato")
+        
         opcoes = df_geral['Contrato'].unique()
-        contrato_escolhido = st.selectbox('Selecione uma aplicação', opcoes, key='visualizarporcontrato')
+        contrato_escolhido = st.selectbox('Selecione um Contrato', opcoes, key='visualizarporcontrato')
         df_contrato = df_geral[df_geral['Contrato'] == contrato_escolhido]
-        edited_df = st.data_editor(df_contrato, hide_index=True, disabled=['Lote', 'Fardo', 'P.Líquido', 'Mic', 'UHM', 'Res', 'COR', 'LEAF', 'Máquina'])
+        edited_df = st.data_editor(df_contrato, hide_index=True, disabled=['Lote', 'Fardo', 'P.Líquido', 'Mic', 'UHM', 'Res', 'COR', 'LEAF', 'Máquina'],key='selecionar_pelo_contrato')
+
+        drop_cols = [col for col in edited_df.columns if col.startswith('Contrato_')]
+        edited_df = edited_df.drop(columns=drop_cols)
         # fazer o download
         return edited_df, df_contrato
 
+    def selecionar_pelo_contrato2(df_geral):
+            
+        opcoes = df_geral['Contrato'].unique()
+        contrato_escolhido = st.selectbox('Selecione um Contrato', opcoes, key='visualizarporcontrato2')
+        df_contrato = df_geral[df_geral['Contrato'] == contrato_escolhido]
+        drop_cols = [col for col in df_contrato.columns if col.startswith('Contrato_')]
+        df_contrato = df_contrato.drop(columns=drop_cols)
+
+        edited_df = st.data_editor(df_contrato, hide_index=True, disabled=['Lote', 'Fardo', 'P.Líquido', 'Mic', 'UHM', 'Res', 'COR', 'LEAF', 'Máquina'],key='selecionar_pelo_contrato2')
+
+        
+        # fazer o download
+        return edited_df
 
 
     def mmToP(mm):
@@ -1470,8 +1506,8 @@ def tela_logado():
                 st.session_state.atualizar_emblocagem = False
             if 'visualizar_emblocagem' not in st.session_state:
                 st.session_state.visualizar_emblocagem = False
-            if 'atualizar_contrato' not in st.session_state:
-                st.session_state.atualizar_contrato = False
+            if 'resumo_contrato' not in st.session_state:
+                st.session_state.resumo_contrato = False
 
             ## Processando os contratos e fazendo o emblocamento.
             if len(contratos) == 1:
@@ -1479,21 +1515,25 @@ def tela_logado():
                 df = gera_df(xlsx_files)
                 if df.shape[0] > 0:
                     st.header("Resumo dos Lotes:")
+                    
                     edited_df, df_resultado = processa_resultado(df,contratos,resumo_file)
 
                     st.header("Salvar Resumo dos Lotes:")      
-                    salva_resultado2(edited_df, df_resultado, contratos)
+                    salva_resultado2(edited_df, contratos)
 
             if len(contratos) > 1:
+
+
+
                 if st.button('Processar Contratos'):
                     st.session_state.processado = True  # Marca o botão como clicado
                     st.session_state.editar_reemblocagem = False  # Reseta o botão de edição
                     st.session_state.atualizar_emblocagem = False
                     st.session_state.visualizar_emblocagem = False
-                    st.session_state.atualizar_contrato = False
+                    st.session_state.resumo_contrato = False
                 
                 if st.session_state.processado:
-                    st.header("Resumo dos Lotes:")
+                    st.header("Sumarizando os Contratos:")
 
                     # Reordena os contratos pelo rigor.
                     contratos = comparar_contratos(contratos)
@@ -1505,13 +1545,13 @@ def tela_logado():
                         if 'df_alocado' in st.session_state:
                             df_alocado = st.session_state.df_alocado
                             progresso_contratos = recalcula_progresso_contratos(df_alocado,contratos)
+                            
 
                         else:
                             # Alocação dos fardos aos contratos
                             df_alocado, progresso_contratos = alocar_fardos(df, contratos)
                             
 
-                        st.write("Sumarizando os Contratos:")
                         st.data_editor(df_alocado.groupby('Contrato')['P. Líquido'].sum())
                         
                         # Exibe os indicadores                    
@@ -1524,7 +1564,7 @@ def tela_logado():
                         st.session_state.editar_reemblocagem = True  # Marca o botão como clicado
                         st.session_state.atualizar_emblocagem = False
                         st.session_state.visualizar_emblocagem = False
-                        st.session_state.atualizar_contrato = False
+                        st.session_state.resumo_contrato = False
                         
 
                     # Se clicar no botão Editar a Reblocagem? 
@@ -1540,56 +1580,56 @@ def tela_logado():
                             st.session_state.editar_reemblocagem = True  # Marca o botão como clicado
                             st.session_state.atualizar_emblocagem = True  # Marca o botão como clicado
                             st.session_state.visualizar_emblocagem = False
-                            st.session_state.atualizar_contrato = False
+                            st.session_state.resumo_contrato = False
 
                         if st.session_state.atualizar_emblocagem:
                             df_alocado = atualizar_emblocagem(edited_df,df_alocado)
-                                                
                     
-
                             if st.button("Visualizar Emblocagem"): 
                                 st.session_state.processado = True  # Marca o botão como clicado
                                 st.session_state.editar_reemblocagem = True  # Marca o botão como clicado
                                 st.session_state.atualizar_emblocagem = True  # Marca o botão como clicado                       
                                 st.session_state.visualizar_emblocagem = True  # Marca o botão como clicado
-                                st.session_state.atualizar_contrato = False
+                                st.session_state.resumo_contrato = True # 
                             
                             # Se clicar no botão Visualizar a Emblocagem? 
                             if st.session_state.visualizar_emblocagem:
-
-                                
-
                                 if df_alocado.shape[0] > 0: 
                                     st.header("Visualizando a Emblocagem:")  
-                                    opcao = st.radio('Selecione a tabela por:', ['Lote', 'Contrato'], index=None)
-                                    if opcao == 'Lote':
-                                        selecioneOLote(edited_df, df_alocado)
-                                    elif opcao == 'Contrato': 
-                                        edited_df0, df_contrato = selecionar_pelo_contrato(df_alocado)
-                                        st.header("Salvar Contrato:")      
-                                        salva_resultado2(edited_df0, df_contrato, contratos)
+                                    _, df_contrato = selecionar_pelo_contrato(df_alocado)
+                                    
 
-                                    else:
-                                        st.write('Nenhuma opção selecionada')
-
+                                    
                             if st.button("Reprocessar Contrato"):
-                                st.session_state.processado = True  # Marca o botão como clicado
-                                st.session_state.editar_reemblocagem = True  # Marca o botão como clicado
-                                st.session_state.atualizar_emblocagem = True  # Marca o botão como clicado                       
-                                st.session_state.visualizar_emblocagem = True  # Marca o botão como clicado
-                                st.session_state.atualizar_contrato = True  # Marca o botão como clicado
-                            # Se clicar no botão Visualizar a Emblocagem? 
-                            if st.session_state.atualizar_contrato:  
                                 st.session_state.df_alocado = df_alocado.copy()
-                                # st.write("Sumarizando os Contratos:")
-                                # st.data_editor(st.session_state.df_alocado.groupby('Contrato')['P. Líquido'].sum())
-                                if st.button("Reprocessar?"):
-                                    st.session_state.processado = False  # Reseta o botão 
-                                    st.session_state.editar_reemblocagem = False  # Reseta botão 
-                                    st.session_state.atualizar_emblocagem = False
-                                    st.session_state.visualizar_emblocagem = False
-                                    st.session_state.atualizar_contrato = False
-                                    st.stop()
+                                st.session_state.processado = False  # Reseta o botão 
+                                st.session_state.editar_reemblocagem = False  # Reseta botão 
+                                st.session_state.atualizar_emblocagem = False
+                                st.session_state.visualizar_emblocagem = False
+                                st.session_state.resumo_contrato = False
+                                st.stop()
+
+                            # st.header("Salvar Contrato:")      
+                            # salva_resultado2(df_alocado, contratos)
+
+
+                    st.header("Resumo dos Contratos:")
+                    if st.button('Resumo dos Contratos:'):
+                        st.session_state.processado = True  # Marca o botão como clicado
+                        st.session_state.editar_reemblocagem = False  
+                        st.session_state.atualizar_emblocagem = False
+                        st.session_state.visualizar_emblocagem = False
+                        st.session_state.resumo_contrato = True
+                    if st.session_state.resumo_contrato:
+                        edited_df0 = selecionar_pelo_contrato2(df_alocado)
+                        # edited_df0, df_resultado = processa_resultado(edited_df0,contratos,resumo_file)
+                        st.header("Salvar Resumo do Contrato:")      
+                        salva_resultado3(edited_df0, contratos)
+
+
+                                    
+                            
+                            
 
 
 

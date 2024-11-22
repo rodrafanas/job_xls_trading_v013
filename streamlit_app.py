@@ -113,8 +113,15 @@ def tela_logado():
             if 'Res' not in df.columns:
                 # Se não existir, crie uma coluna 'Res' com valores vazios
                 df['Res'] = 0            
-
-            sel_cols = ['Lote','Fardo','P. Líquido', 'Mic', 'UHM', 'Res', 'COR', 'LEAF']
+            
+            # Verifique se a coluna 'Maquína' existe no DataFrame
+            if 'Máquina' not in df.columns:
+                df['Máquina'] = 0
+            
+            if df['Máquina'].isnull().all():
+                df['Máquina'] = df['NaN']   
+        
+            sel_cols = ['Lote','Fardo','P. Líquido', 'Mic', 'UHM', 'Res', 'COR', 'LEAF', 'Máquina']
             df = df[sel_cols]
             
             
@@ -205,12 +212,12 @@ def tela_logado():
                 df['Res'] = 0  
             if 'Máquina' not in df.columns:
                 df['Máquina'] = 0
-            df['Aplicação'] = "Negado"
+            df['Contrato'] = np.nan
             
             if df['Máquina'].isnull().all():
                 df['Máquina'] = df['NaN']   
         
-            sel_cols = ['Lote','Fardo','P. Líquido', 'Máquina', 'Mic', 'UHM', 'Res', 'COR', 'LEAF', 'Aplicação']
+            sel_cols = ['Lote','Fardo','P. Líquido', 'Máquina', 'Mic', 'UHM', 'Res', 'COR', 'LEAF', 'Contrato']
             df = df[sel_cols]
             #st.dataframe(df)  
             # df['COR'] = df['COR'].str.replace('"','')
@@ -514,8 +521,75 @@ def tela_logado():
         st.write(f'UHM {option_uhm} de:', slider_uhm)
         return slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm
 
-    def processa_resultado(df,slider_bales_before, option_res,
-                    slider_mic, slider_uhm, option_uhm, resumo_file, rec_parm):
+    def extrair_contrato(contratos):
+        # Verifica se há apenas um contrato no dicionário
+        if len(contratos) == 1:
+            # Obtém o primeiro (e único) contrato
+            # st.write('dados do Contrato 1')
+            # st.write(contratos)
+            
+            for nome_contrato, dados_contrato in contratos.items():
+                if isinstance(dados_contrato, dict):
+                    # Verifica se o contrato existe e extrai as variáveis
+                    peso = dados_contrato.get("peso", "Valor padrão")
+                    slider_bales_before = dados_contrato.get("slider_bales_before")
+                    option_res = dados_contrato.get("option_res")
+                    slider_mic = dados_contrato.get("slider_mic")
+                    slider_uhm = dados_contrato.get("slider_uhm")
+                    option_uhm = dados_contrato.get("option_uhm")
+                    rec_parm = dados_contrato.get("rec_parm")
+
+                    # Retorna as variáveis
+                    return slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm, rec_parm, peso
+                else:
+                    st.error(f"O contrato '{nome_contrato}' não é um dicionário válido.")
+                    return None, None, None, None, None, None, None
+
+
+            
+            # # Extrai as variáveis do contrato
+            # peso = contratos["peso"]
+            # slider_bales_before = contratos["slider_bales_before"]
+            # option_res = contratos["option_res"]
+            # slider_mic = contratos["slider_mic"]
+            # slider_uhm = contratos["slider_uhm"]
+            # option_uhm = contratos["option_uhm"]
+            # rec_parm = contratos["rec_parm"]
+            # # st.write(peso)
+
+            
+            # Retorna as variáveis
+            # return slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm, rec_parm, peso
+        if len(contratos) > 1:
+            # Obtém o primeiro (e único) contrato
+            nome_contrato = next(iter(contratos))
+            dados_contrato = contratos[nome_contrato]
+            # st.write('dados do Contrato 2')
+            # st.write(contratos)
+            
+            # Extrai as variáveis do contrato
+            peso = dados_contrato["peso"]
+            slider_bales_before = dados_contrato["slider_bales_before"]
+            option_res = dados_contrato["option_res"]
+            slider_mic = dados_contrato["slider_mic"]
+            slider_uhm = dados_contrato["slider_uhm"]
+            option_uhm = dados_contrato["option_uhm"]
+            rec_parm = dados_contrato["rec_parm"]
+            # st.write(peso)
+
+            
+            # Retorna as variáveis
+            return slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm, rec_parm, peso
+        
+        else:
+            st.error("Existem múltiplos contratos ou nenhum contrato disponível.")
+            return None, None, None, None, None, None, None
+
+
+
+    def processa_resultado(df,contratos, resumo_file):
+        slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm, rec_parm, peso = extrair_contrato(contratos)
+        
         resultado = stats_table(df,slider_bales_before, option_res,
                     slider_mic, slider_uhm, option_uhm)
         if rec_parm == 1:
@@ -534,6 +608,150 @@ def tela_logado():
         edited_df = st.data_editor(resultado2.reset_index(drop=False).set_index('Lote',drop=False), disabled=['Lote', 'Net weight', 'Mic(avg)', 'Mic(min)', 'Mic(max)'])
         return edited_df, resultado2
 
+    # Função auxiliar para calcular o rigor de cada contrato
+    def calcular_rigor(dados_contrato):
+        rigor = 0
+        
+        # Critério bales/res (quanto maior o res exigido, mais rigoroso)
+        if dados_contrato["option_res"] == 'acima':
+            rigor += dados_contrato["slider_bales_before"]
+        else:
+            rigor -= dados_contrato["slider_bales_before"]
+
+        # Critério mic (quanto maior o mic, mais rigoroso)
+        rigor += dados_contrato["slider_mic"][0]
+
+        # Critério uhm (quanto maior o uhm, mais rigoroso)
+        if dados_contrato["option_uhm"] == 'acima':
+            rigor += dados_contrato["slider_uhm"]
+        else:
+            rigor -= dados_contrato["slider_uhm"]
+
+        return rigor
+
+    def comparar_contratos(contratos):
+        # Lista para armazenar os contratos ordenados por rigorosidade
+        contratos_rigorosos = []
+
+        # Calcular rigor para cada contrato
+        for nome_contrato, dados_contrato in contratos.items():
+            rigor = calcular_rigor(dados_contrato)
+            # st.write(rigor)
+            contratos_rigorosos.append((nome_contrato, dados_contrato, rigor))
+
+        # Ordenar os contratos pelo valor de rigor (do mais rigoroso para o menos rigoroso)
+        contratos_rigorosos.sort(key=lambda x: x[2], reverse=True)
+
+        # Reconstruir o dicionário de contratos na nova ordem
+        contratos_ordenados = {nome_contrato: dados_contrato for nome_contrato, dados_contrato, _ in contratos_rigorosos}
+
+        return contratos_ordenados
+
+
+    def alocar_fardos(df, contratos):
+
+        df = df[~df['Fardo'].isna()]
+        df = df.reset_index(drop=True)
+
+        # Adiciona uma coluna ao DataFrame para indicar o contrato a que o fardo foi alocado
+        df["Contrato"] = None
+        # df["Contrato"] = "Não Emblocados"
+        progresso_contratos = {contrato: 0 for contrato in contratos}  # Controle do peso acumulado por contrato
+    
+        
+        # Função para verificar se o fardo atende às condições de um contrato
+        def atende_condicoes(fardo, contrato):
+            condicoes = True
+            if contrato["option_res"] == "acima":
+                condicoes &= fardo["Res"] >= contrato["slider_bales_before"]
+            else:
+                condicoes &= fardo["Res"] < contrato["slider_bales_before"]
+            
+            condicoes &= fardo["Mic"] >= contrato["slider_mic"][0]
+            
+            if contrato["option_uhm"] == "acima":
+                condicoes &= fardo["UHM"] >= contrato["slider_uhm"]
+            else:
+                condicoes &= fardo["UHM"] < contrato["slider_uhm"]
+            
+            return condicoes
+
+        # Itera sobre cada contrato, ordenando pela rigorosidade
+        for contrato_nome, contrato_dados in contratos.items():
+            peso_necessario = float(contrato_dados["peso"])
+            # print(peso_necessario)
+            peso_alocado = 0
+
+            # Filtra os fardos não alocados e que atendem as condições do contrato atual
+            for idx, fardo in df[df["Contrato"].isnull()].iterrows():
+                if atende_condicoes(fardo, contrato_dados):
+                    df.at[idx, "Contrato"] = contrato_nome
+                    peso_alocado += fardo["P. Líquido"]
+                    # print(peso_alocado)
+                    
+                    # Interrompe se o peso total necessário for alcançado
+                    if peso_alocado >= peso_necessario:
+                        # print("break",contrato_nome)
+                        break
+
+            
+
+            progresso_contratos[contrato_nome] = min(peso_alocado, peso_necessario)  # Atualiza o peso acumulado para o contrato
+        
+        # Substitui valores nulos na coluna "Contrato" pelo texto "Fardo não Reemblocado"
+        df.loc[df["Contrato"].isnull(), "Contrato"] = "Fardo não Reemblocado"
+
+
+        return df, progresso_contratos
+        
+    def recalcula_progresso_contratos(df_alocado,contratos):
+
+        df_1 = df_alocado.groupby('Contrato')[['P. Líquido']].sum()
+        
+        progresso_contratos = {contrato: 0 for contrato in contratos}  # Controle do peso acumulado por contrato
+        for idx, fardo in df_1.iterrows():
+            progresso_contratos[idx] = fardo["P. Líquido"]  # Atualiza o peso acumulado para o contrato
+
+        return progresso_contratos
+
+
+    def exibir_indicadores(progresso_contratos, contratos):
+        
+
+        for contrato_nome, peso_alocado in progresso_contratos.items():
+            try:
+                # Tenta calcular o peso_meta (ou outra métrica) de forma segura
+                peso_meta = float(contratos[contrato_nome]["peso"])
+                progresso = peso_alocado / peso_meta
+                percentual = int(progresso * 100)
+                
+                st.subheader(f"{contrato_nome}")
+                # Normaliza para [0.0, 1.0]
+                progresso = min(max(progresso, 0.0), 1.0)
+                st.progress(progresso)
+                
+                if progresso >= 1:
+                    st.success(f"A meta de peso para o {contrato_nome} foi atingida: {peso_alocado:.2f}/{peso_meta:.2f} kg")
+                else:
+                    st.info(f"Progresso atual: {peso_alocado:.2f}/{peso_meta:.2f} kg ({percentual}%)")
+
+                
+            except (KeyError, ValueError) as e:
+                continue
+
+            # peso_meta = float(contratos[contrato_nome]["peso"])
+            # progresso = peso_alocado / peso_meta
+            # percentual = int(progresso * 100)
+            
+            # st.subheader(f"{contrato_nome}")
+            # # Normaliza para [0.0, 1.0]
+            # progresso = min(max(progresso, 0.0), 1.0)
+            # st.progress(progresso)
+            
+            # if progresso >= 1:
+            #     st.success(f"A meta de peso para o {contrato_nome} foi atingida: {peso_alocado:.2f}/{peso_meta:.2f} kg")
+            # else:
+            #     st.info(f"Progresso atual: {peso_alocado:.2f}/{peso_meta:.2f} kg ({percentual}%)")
 
 
     # def salva_parms(folder_path, slider_bales_before, option_res,
@@ -570,9 +788,8 @@ def tela_logado():
         return processed_data
 
 
-    def salva_resultado2(edited_df, df_resultado, slider_bales_before, option_res,
-                    slider_mic, slider_uhm, option_uhm):
-        
+    def salva_resultado2(edited_df, df_resultado, contratos):
+        slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm, _, _ = extrair_contrato(contratos)
         st.download_button(label='Download Excel',
                         data=to_excel(edited_df),
                         file_name='resumo.xlsx',
@@ -593,34 +810,29 @@ def tela_logado():
 
 
 
-    def solicita_parms_slider():
+    def solicita_parms_slider(rk):
         ## Filtro Res
         option_res = st.selectbox(
-            'Selecione criterio de escolha:',
-            ('acima', 'abaixo'))
+            'Selecione Resistência acima de ou abaixo de:',
+            ('acima', 'abaixo'), key='res'+str(rk))
 
         # Solicita ao usuário os parâmetros
-        slider_bales_before = st.slider(f'Resistência {option_res} de:', 20, 40, 28)
-        st.write(f'Resistência {option_res} de:', slider_bales_before)
+        slider_bales_before = st.slider(f'Resistência {option_res} de:', 20, 40, 28, key='bales'+str(rk))
+        # st.write(f'Resistência {option_res} de:', slider_bales_before)
 
-        
         ## Filtro Mic
-        # option_mic = st.selectbox(
-        #     'Selecione criterio de escolha:',
-        #     ('abaixo', 'acima', 'entre'), key='mic')
-
         slider_mic = st.slider(
-            f'Mic entre:', 
-            2.00, 5.00, (3.70, 4.90))
-        # st.write(f'Mic entre {slider_mic[0]} e {slider_mic[1]}')
-        st.write(f"Mic entre {float(slider_mic[0])} e {float(slider_mic[1])}")
+            f'Selecione Mic entre:', 
+            2.00, 5.00, (3.70, 4.90), key='mic'+str(rk))
+        # st.write(f"Mic entre {float(slider_mic[0])} e {float(slider_mic[1])}")
+
         ## Filtro UHM
         option_uhm = st.selectbox(
-            'Selecione criterio de escolha:',
-            ('acima', 'abaixo'), key='uhm')
+            'Selecione UHM acima de ou abaixo de:',
+            ('acima', 'abaixo'), key='uhm'+str(rk))
 
-        slider_uhm = st.slider(f'UHM {option_uhm} de:', 0.00, 3.00, 1.11)
-        st.write(f'UHM {option_uhm} de:', slider_uhm)
+        slider_uhm = st.slider(f'UHM {option_uhm} de:', 0.00, 3.00, 1.11, key='s_uhm'+str(rk))
+        # st.write(f'UHM {option_uhm} de:', slider_uhm)
         return slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm
 
 
@@ -628,7 +840,10 @@ def tela_logado():
         
         # Extração dos arquivos xlsx
         df, lotes_duplicados = run_extract_table(files)
-        return df, lotes_duplicados
+        if lotes_duplicados != []:
+            st.warning(f"Atenção Fardos com mais de uma medida no lote {lotes_duplicados}")
+            
+        return df
 
         # loop que percorre a lista de arquivos passados e verifica e mostra o arquivo que possui o nome da opção selecionada
 
@@ -691,11 +906,180 @@ def tela_logado():
             st.write("Nenhum lote selecionado.")
 
 
-    def selecionar_pelo_contrato(df_geral):
-        opcoes = df_geral['Aplicação'].unique()
+
+    def convert_columns_to_bool(df, columns):
+        """
+        Converte colunas específicas de um DataFrame de 0/1 para False/True.
+
+        Parâmetros:
+            df (pd.DataFrame): O DataFrame com as colunas a serem convertidas.
+            columns (list): Lista com os nomes das colunas a serem convertidas.
+
+        Retorna:
+            pd.DataFrame: DataFrame com as colunas convertidas.
+        """
+        df = df.copy()  # Para evitar alterações no DataFrame original
+        for col in columns:
+            if col in df.columns:
+                df[col] = df[col].astype(bool)
+            else:
+                print(f"A coluna {col} não existe no DataFrame.")
+        return df
+
+
+
+    # função para checar se só tem um contrato selecionado.
+    def check_dup_contratos(df):
+        cols = [col for col in df.columns if col.startswith('Contrato_')]
+        # print(cols)
+        # Filtra as linhas onde a soma dos valores True é maior que 1
+        linhas_filtradas = df[df[cols].sum(axis=1) > 1]
+        return linhas_filtradas
+
+
+        
+    # função para mudar a coluna Contrato.
+    def atualiza_contrato(df0):
+        df = df0.copy()
+        cols = [col for col in df.columns if col.startswith('Contrato_')]
+        for col in cols:
+            novo_contrato = col.replace("Contrato_", "")
+            df.loc[df[col]==True,"Contrato"] = novo_contrato
+
+        return df
+
+
+    import pandas as pd
+
+    def atualizar_contratos(df_geral, df_contrato_alterado):
+        """
+        Atualiza o DataFrame geral com as alterações do DataFrame de contratos alterados.
+        A atualização é realizada usando as colunas 'Fardo' e 'Lote' como chaves.
+
+        Parâmetros:
+            df_geral (pd.DataFrame): DataFrame contendo todos os contratos.
+            df_contrato_alterado (pd.DataFrame): DataFrame contendo os contratos alterados.
+
+        Retorna:
+            pd.DataFrame: DataFrame atualizado com as alterações aplicadas.
+        """
+        # Realiza o merge entre df_geral e df_contrato_alterado com base nas colunas 'Fardo' e 'Lote'
+        df_atualizado = df_geral.merge(df_contrato_alterado, on=["Fardo", "Lote"], how="left", suffixes=("", "_alterado"))
+        
+        # Agora vamos atualizar as colunas no df_atualizado
+        for col in df_contrato_alterado.columns:
+            if col not in ["Fardo", "Lote"]:  # Não altere as colunas de chave
+                col_alterado = col + "_alterado"
+                
+                # Verifica se a coluna alterada realmente existe
+                if col_alterado in df_atualizado.columns:
+                    df_atualizado[col] = df_atualizado[col_alterado].combine_first(df_atualizado[col])
+                    df_atualizado.drop(columns=[col_alterado], inplace=True)
+        
+        return df_atualizado
+
+
+    # def atualizar_contratos(df_geral, df_contrato_alterado):
+    #     """
+    #     Atualiza o DataFrame geral com as alterações do DataFrame de contratos alterados.
+    #     A atualização é realizada usando as colunas 'Fardo' e 'Lote' como chaves.
+
+    #     Parâmetros:
+    #         df_geral (pd.DataFrame): DataFrame contendo todos os contratos.
+    #         df_contrato_alterado (pd.DataFrame): DataFrame contendo os contratos alterados.
+
+    #     Retorna:
+    #         pd.DataFrame: DataFrame atualizado com as alterações aplicadas.
+    #     """
+    #     # Realiza o merge entre df_geral e df_contrato_alterado com base nas colunas 'Fardo' e 'Lote'
+    #     df_atualizado = df_geral.merge(df_contrato_alterado, on=["Fardo", "Lote"], how="left", suffixes=("", "_alterado"))
+        
+    #     # Atualiza as colunas do contrato com os valores alterados
+    #     for col in df_contrato_alterado.columns:
+    #         if col not in ["Fardo", "Lote"]:
+    #             df_atualizado[col] = df_atualizado[col + "_alterado"].combine_first(df_atualizado[col])
+    #             df_atualizado.drop(columns=[col + "_alterado"], inplace=True)
+        
+    #     return df_atualizado
+
+    def contratos_to_bool(df_geral):
+        # Verifica se já existem colunas começando com "Contrato_"
+        colunas_com_contrato = [col for col in df_geral.columns if col.startswith("Contrato_")]
+        
+        if colunas_com_contrato:
+            st.warning(f"Colunas começando com 'Contrato_' já existem: {colunas_com_contrato}. O merge não será realizado.")
+            return df_geral
+        else:
+            # Cria a tabela cruzada e adiciona prefixo "Contrato_"
+            Contrato_class = pd.crosstab(df_geral.Fardo, df_geral.Contrato).add_prefix("Contrato_").reset_index()
+            
+            # Converte colunas para booleano
+            columns_to_convert = [col for col in Contrato_class.columns if col != 'Fardo']
+            Contrato_class = convert_columns_to_bool(Contrato_class, columns_to_convert)
+            
+            # Realiza o merge com base na coluna 'Fardo'
+            df_geral = pd.merge(df_geral, Contrato_class, how='left', on='Fardo')
+            
+            return df_geral
+
+
+
+
+    # def contratos_to_bool(df_geral):
+    #     Contrato_class = pd.crosstab(df_geral.Fardo,df_geral.Contrato).add_prefix("Contrato_").reset_index()
+        
+    #     columns_to_convert = [col for col in Contrato_class.columns if col != 'Fardo']
+    #     Contrato_class = convert_columns_to_bool(Contrato_class, columns_to_convert)
+        
+
+
+    #     # resultados = pd.merge(df,Contrato_class,how='left',on='Lote')
+    #     df_geral = pd.merge(df_geral,Contrato_class,how='left',on='Fardo')
+
+    #     return df_geral
+
+
+    def editar_emblocagem(df_geral):
+        opcoes = df_geral['Contrato'].unique()
         contrato_escolhido = st.selectbox('Selecione uma aplicação', opcoes)
-        df_contrato = df_geral[df_geral['Aplicação'] == contrato_escolhido]
-        st.data_editor(df_contrato, hide_index=True, disabled=['Lote', 'Fardo', 'P.Líquido', 'Mic', 'UHM', 'Res', 'COR', 'LEAF', 'Máquina'])
+
+
+
+        df_contrato = df_geral[df_geral['Contrato'] == contrato_escolhido]
+        edited_df = st.data_editor(df_contrato, hide_index=True, disabled=['Lote', 'Fardo', 'P.Líquido', 'Mic', 'UHM', 'Res', 'COR', 'LEAF', 'Máquina'])
+
+        
+
+        # fazer o download
+        return edited_df, df_contrato
+
+
+    def atualizar_emblocagem(edited_df,df_geral):
+        
+            linhas_filtradas = check_dup_contratos(edited_df)
+            if linhas_filtradas.shape[0] > 0:
+                st.write("Alerta! Selecione apenas um contrato nos fardos abaixo:")
+                linhas_filtradas
+            else:
+                df_contrato_alterado = atualiza_contrato(edited_df)
+                df_atualizado = atualizar_contratos(df_geral, df_contrato_alterado)
+                
+                st.write("Emblocagem Alterada!!")
+                return df_atualizado
+                # edited_df
+
+
+
+    def selecionar_pelo_contrato(df_geral):
+        st.write("Entrei no selecionar pelo contrato")
+        opcoes = df_geral['Contrato'].unique()
+        contrato_escolhido = st.selectbox('Selecione uma aplicação', opcoes, key='visualizarporcontrato')
+        df_contrato = df_geral[df_geral['Contrato'] == contrato_escolhido]
+        edited_df = st.data_editor(df_contrato, hide_index=True, disabled=['Lote', 'Fardo', 'P.Líquido', 'Mic', 'UHM', 'Res', 'COR', 'LEAF', 'Máquina'])
+        # fazer o download
+        return edited_df, df_contrato
+
+
 
     def mmToP(mm):
         return mm * 2.83465
@@ -892,11 +1276,11 @@ def tela_logado():
         return buffer
 
     def selecao_contratos(df):
-        contratos = df['Aplicação'].unique()  
+        contratos = df['Contrato'].unique()  
         caixaSelecao = st.selectbox('Visualizar lote', contratos)
 
         if caixaSelecao != 'Negado':
-            contrato_escolhido = df[df['Aplicação'] == caixaSelecao]
+            contrato_escolhido = df[df['Contrato'] == caixaSelecao]
             instrucao,filial,codigo, veiculo, nota_fiscal, empresa, remente, destinatario, enedereco, pedvenda, data_saida, bloco = gerar_formulario()
             pdf_buffer = gerar_pdf(caixaSelecao, contrato_escolhido, instrucao,filial,codigo, veiculo, nota_fiscal, empresa, remente, destinatario, enedereco, pedvenda, data_saida, bloco)
             with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_pdf:
@@ -909,8 +1293,115 @@ def tela_logado():
 
         else: 
             st.write('Selecione um contrato válido')
+
+    def input_reemblocar():
+        on = st.toggle("Reemblocar?")
+        reemblocar = 1
+
+        if on:
+            st.write("Feature activated!")
+            reemblocar = 2
+        return reemblocar
+    
+    def input_parametros(parms_file,rk):
+
+        ## Checa se tem params anteriores
+        rec_parm, params = check_params(parms_file)
+
+        ## Roda sliders        
+        slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm = func_sliders(rec_parm,params,rk)
+
+        return rec_parm, slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm
+        
+
+    # def input_contratos(reemblocar,parms_file):
+    #     if reemblocar == 1:
+    #         st.title("Entrada do Contrato")
+
+    #         contratos = st.text_input(f"Nome do contrato", "")
+    #         pesos = st.text_input(f"Peso do contrato", "")
             
-    def func_sliders(rec_parm,params):
+    #         rec_parm, slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm = input_parametros(parms_file)
+        
+    #     if reemblocar == 2:
+    #         st.title("Entrada dos Contratos")
+
+    #         # Entrada para o número de contratos
+    #         num_contratos = st.number_input("Quantos contratos deseja adicionar?", min_value=1, step=1)
+
+    #         # Lista para armazenar os nomes dos contratos
+    #         contratos = []
+
+    #         # Gerar campos de texto dinamicamente com base no número de contratos
+    #         for i in range(num_contratos):
+    #             contrato = st.text_input(f"Nome do contrato {i + 1}", "")
+    #             contratos.append(contrato)
+
+    #         # Exibir a lista de contratos inseridos
+    #         if st.button("Mostrar contratos"):
+    #             st.write("Contratos adicionados:")
+    #             for idx, contrato in enumerate(contratos, 1):
+    #                 st.write(f"{idx}. {contrato}")
+        
+    #     return contratos, pesos, rec_parm, slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm
+    
+    
+    def input_contratos(reemblocar, parms_file):
+        contratos = {}
+
+        if reemblocar == 1:
+            st.header("Entrada do Contrato")
+
+            # Entrada para um único contrato
+            nome_contrato = st.text_input("Nome do contrato", "")
+            peso_contrato = st.text_input("Peso do contrato", "")
+
+            # Parâmetros do contrato
+            rec_parm, slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm = input_parametros(parms_file,0)
+
+            # Adiciona os dados ao dicionário
+            contratos[nome_contrato] = {
+                "peso": peso_contrato,
+                "rec_parm": rec_parm,
+                "slider_bales_before": slider_bales_before,
+                "option_res": option_res,
+                "slider_mic": slider_mic,
+                "slider_uhm": slider_uhm,
+                "option_uhm": option_uhm
+            }
+
+        elif reemblocar == 2:
+            st.title("Entrada dos Contratos")
+
+            # Entrada para o número de contratos
+            num_contratos = st.number_input("Quantos contratos deseja adicionar?", min_value=1, step=1)
+
+            # Gerar campos de texto dinamicamente com base no número de contratos
+            for i in range(num_contratos):
+                st.header(f"Informe os parâmetros do Contrato {i + 1}")
+                nome_contrato = st.text_input(f"Nome do Contrato {i + 1}:", "")
+                peso_contrato = st.text_input(f"Peso Total (kg) do contrato {i + 1}:", "")
+
+                # Parâmetros do contrato
+                rec_parm, slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm = input_parametros(parms_file,i)
+
+                # Adiciona os dados ao dicionário
+                contratos[nome_contrato] = {
+                    "peso": peso_contrato,
+                    "rec_parm": rec_parm,
+                    "slider_bales_before": slider_bales_before,
+                    "option_res": option_res,
+                    "slider_mic": slider_mic,
+                    "slider_uhm": slider_uhm,
+                    "option_uhm": option_uhm
+                }
+
+        return contratos
+
+        
+
+
+    def func_sliders(rec_parm,params,rk):
         if rec_parm == 1:
             ## Rodar indica_parms_slider...
             st.header("Filtrando dos Lotes:")
@@ -918,8 +1409,8 @@ def tela_logado():
                         
         else:
             # Solicita ao usuário os parâmetros
-            st.title("Informe os parâmetros")
-            slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm = solicita_parms_slider()
+            # st.title("Informe os parâmetros")
+            slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm = solicita_parms_slider(rk)
         
         return slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm
 
@@ -934,7 +1425,7 @@ def tela_logado():
             
         ## Se não existe params.txt o usuario indica os params.    
         else:
-            st.title("Arquivo 'parms.json' não encontrado.")
+            # st.title("Arquivo 'parms.json' não encontrado.")
             params = []
             rec_parm = 0
 
@@ -953,6 +1444,7 @@ def tela_logado():
     # Função principal
     def main():
         st.set_page_config(layout="wide") 
+
         carrega_logo()
         st.title("HVI Analysis System")
         
@@ -961,45 +1453,147 @@ def tela_logado():
         # if os.path.exists(folder_path) and os.path.isdir(folder_path):
         if xlsx_files != []:        
             st.success(f"Carregando os Lotes!")
-            ## Checa se tem params anteriores
-            rec_parm, params = check_params(parms_file)
 
-            ## Roda sliders        
-            slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm = func_sliders(rec_parm,params)
-            
-            ## Gera df
-            df, lotes_duplicados = gera_df(xlsx_files)
-            if lotes_duplicados != []:
-                st.warning(f"Atenção Fardos com mais de uma medida no lote {lotes_duplicados}")
-                # alerta(lotes_duplicados)
+            # Deseja Reemblocar? Sim ou Não.
+            reemblocar = input_reemblocar()
 
-            if df.shape[0] > 0:
-            
-                ## Processando os arquivos e gerando a tabela resultado
-                st.header("Resumo dos Lotes:")
-                edited_df, df_resultado = processa_resultado(df,slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm, resumo_file, 
-                rec_parm)
+            # Executa a função se o arquivo for rodado diretamente
+            contratos = input_contratos(reemblocar, parms_file)
+            # st.write(contratos)
 
-                st.header("Salvar Resumo dos Lotes:")      
-                # salva_resultado2(df_resultado, params, slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm, folder_path)
-                salva_resultado2(edited_df, df_resultado, slider_bales_before, option_res, slider_mic, slider_uhm, option_uhm)
+            # Inicializa session_state para armazenar se o botão foi clicado
+            if 'processado' not in st.session_state:
+                st.session_state.processado = False
+            if 'editar_reemblocagem' not in st.session_state:
+                st.session_state.editar_reemblocagem = False
+            if 'atualizar_emblocagem' not in st.session_state:
+                st.session_state.atualizar_emblocagem = False
+            if 'visualizar_emblocagem' not in st.session_state:
+                st.session_state.visualizar_emblocagem = False
+            if 'atualizar_contrato' not in st.session_state:
+                st.session_state.atualizar_contrato = False
+
+            ## Processando os contratos e fazendo o emblocamento.
+            if len(contratos) == 1:
+                ## Gera df
+                df = gera_df(xlsx_files)
+                if df.shape[0] > 0:
+                    st.header("Resumo dos Lotes:")
+                    edited_df, df_resultado = processa_resultado(df,contratos,resumo_file)
+
+                    st.header("Salvar Resumo dos Lotes:")      
+                    salva_resultado2(edited_df, df_resultado, contratos)
+
+            if len(contratos) > 1:
+                if st.button('Processar Contratos'):
+                    st.session_state.processado = True  # Marca o botão como clicado
+                    st.session_state.editar_reemblocagem = False  # Reseta o botão de edição
+                    st.session_state.atualizar_emblocagem = False
+                    st.session_state.visualizar_emblocagem = False
+                    st.session_state.atualizar_contrato = False
                 
-                # Gerar df geral
-                df_geral = gerar_df_geral(xlsx_files)
+                if st.session_state.processado:
+                    st.header("Resumo dos Lotes:")
 
-                st.header("Emblocagem:")  
-                opcao = st.radio('Selecione a tabela por:', ['Lote', 'Contrato'], index=None)
-                if opcao == 'Lote':
-                    selecioneOLote(edited_df, df_geral)
-                elif opcao == 'Contrato': 
-                    selecionar_pelo_contrato(df_geral)
-                else:
-                    st.write('Nenhuma opção selecionada')
+                    # Reordena os contratos pelo rigor.
+                    contratos = comparar_contratos(contratos)
+                    # st.write(contratos)
+
+                    ## Gera df
+                    df = gera_df(xlsx_files)
+                    if df.shape[0] > 0:
+                        if 'df_alocado' in st.session_state:
+                            df_alocado = st.session_state.df_alocado
+                            progresso_contratos = recalcula_progresso_contratos(df_alocado,contratos)
+
+                        else:
+                            # Alocação dos fardos aos contratos
+                            df_alocado, progresso_contratos = alocar_fardos(df, contratos)
+                            
+
+                        st.write("Sumarizando os Contratos:")
+                        st.data_editor(df_alocado.groupby('Contrato')['P. Líquido'].sum())
+                        
+                        # Exibe os indicadores                    
+                        st.header("Progresso da Emblocagem dos Contratos:")
+                        exibir_indicadores(progresso_contratos, contratos)
+
+                
+                    if st.button('Editar a Reemblocagem?'):
+                        st.session_state.processado = True  # Marca o botão como clicado
+                        st.session_state.editar_reemblocagem = True  # Marca o botão como clicado
+                        st.session_state.atualizar_emblocagem = False
+                        st.session_state.visualizar_emblocagem = False
+                        st.session_state.atualizar_contrato = False
+                        
+
+                    # Se clicar no botão Editar a Reblocagem? 
+                    if st.session_state.editar_reemblocagem:
+                        st.header("Editar a Emblocagem:")  
+
+                        df_contrato_alterado = pd.DataFrame()
+                        df_alocado = contratos_to_bool(df_alocado)
+                        edited_df, df_contrato = editar_emblocagem(df_alocado)
+
+                        if st.button('Atualizar a Reemblocagem?'):
+                            st.session_state.processado = True  # Marca o botão como clicado
+                            st.session_state.editar_reemblocagem = True  # Marca o botão como clicado
+                            st.session_state.atualizar_emblocagem = True  # Marca o botão como clicado
+                            st.session_state.visualizar_emblocagem = False
+                            st.session_state.atualizar_contrato = False
+
+                        if st.session_state.atualizar_emblocagem:
+                            df_alocado = atualizar_emblocagem(edited_df,df_alocado)
+                                                
+                    
+
+                            if st.button("Visualizar Emblocagem"): 
+                                st.session_state.processado = True  # Marca o botão como clicado
+                                st.session_state.editar_reemblocagem = True  # Marca o botão como clicado
+                                st.session_state.atualizar_emblocagem = True  # Marca o botão como clicado                       
+                                st.session_state.visualizar_emblocagem = True  # Marca o botão como clicado
+                                st.session_state.atualizar_contrato = False
+                            
+                            # Se clicar no botão Visualizar a Emblocagem? 
+                            if st.session_state.visualizar_emblocagem:
+
+                                
+
+                                if df_alocado.shape[0] > 0: 
+                                    st.header("Visualizando a Emblocagem:")  
+                                    opcao = st.radio('Selecione a tabela por:', ['Lote', 'Contrato'], index=None)
+                                    if opcao == 'Lote':
+                                        selecioneOLote(edited_df, df_alocado)
+                                    elif opcao == 'Contrato': 
+                                        edited_df0, df_contrato = selecionar_pelo_contrato(df_alocado)
+                                        st.header("Salvar Contrato:")      
+                                        salva_resultado2(edited_df0, df_contrato, contratos)
+
+                                    else:
+                                        st.write('Nenhuma opção selecionada')
+
+                            if st.button("Reprocessar Contrato"):
+                                st.session_state.processado = True  # Marca o botão como clicado
+                                st.session_state.editar_reemblocagem = True  # Marca o botão como clicado
+                                st.session_state.atualizar_emblocagem = True  # Marca o botão como clicado                       
+                                st.session_state.visualizar_emblocagem = True  # Marca o botão como clicado
+                                st.session_state.atualizar_contrato = True  # Marca o botão como clicado
+                            # Se clicar no botão Visualizar a Emblocagem? 
+                            if st.session_state.atualizar_contrato:  
+                                st.session_state.df_alocado = df_alocado.copy()
+                                # st.write("Sumarizando os Contratos:")
+                                # st.data_editor(st.session_state.df_alocado.groupby('Contrato')['P. Líquido'].sum())
+                                if st.button("Reprocessar?"):
+                                    st.session_state.processado = False  # Reseta o botão 
+                                    st.session_state.editar_reemblocagem = False  # Reseta botão 
+                                    st.session_state.atualizar_emblocagem = False
+                                    st.session_state.visualizar_emblocagem = False
+                                    st.session_state.atualizar_contrato = False
+                                    st.stop()
 
 
-                st.header("Contratos e Romaneios:") 
-                st.subheader('Selecione o contrato')
-                selecao_contratos(df_geral)
+
+
         else:
             st.error(f"Por favor selecione um Lote válido.")
 
@@ -1011,7 +1605,9 @@ def tela_logado():
 
 
 if 'logged_in' not in st.session_state:
-    st.session_state.logged_in=False
+    # st.session_state.logged_in=False
+    st.session_state.logged_in=True # retirar em prod
+    
 
 if st.session_state.logged_in:
     tela_logado()

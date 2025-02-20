@@ -1,6 +1,0 @@
-slider_bales_before: 27
-slider_mic: [3.5,4.5]
-slider_uhm: 1.14
-option_res: acima
-option_mic: abaixo
-option_uhm: abaixo

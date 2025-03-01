@@ -139,100 +139,87 @@ def tela_logado():
 
         return df
 
-    def extract_table_from_file_secon(path_to_file):
-        # st.write(path_to_file.name)
-        if path_to_file.name != 'resumo.xlsx':
-            # st.write(path_to_file.name)
-            df = pd.read_excel(path_to_file)
-            
-            indice_inicio = df.head(7).T.isna().sum().index[df.head(7).T.isna().sum()<4][0]
-            cols = df.iloc[indice_inicio].to_list()
-            try:
-                if 'UHM' in cols:
-                    cols = cols
-                elif 'UHM' in df.columns.tolist():
-                    cols = df.columns.tolist()
-                else:
-                    raise ValueError("A coluna 'UHM' não foi encontrada em cols nem em df.columns.tolist()")
-            except Exception as e:
-                print(e)
-
-            cols = ['NaN' if pd.isna(valor) else valor for valor in cols]
-            # print(cols)
-            df = df.set_axis(cols, axis = 1)
-            drop_indices = df.head(7).T.isna().sum().index[df.head(7).T.isna().sum()>4].tolist()
-            # Removendo as linhas com base nos índices
-            df = df.drop(drop_indices).iloc[1:] #, inplace=True)
-            df = df.reset_index(drop=True)
-            # indice_final = df[df["Mic"].isna()].index[0]
-            # indice_final = df[df["UHM"].isna()].index[0]
-            try:
-                indice_final = df[df["UHM"].isna()].index[0]
-            except IndexError:
-                # Define indice_final como a quantidade de linhas de df caso o erro ocorra
-                indice_final = len(df)
-
-
-            df =  df.drop(df.index[indice_final:])
-            lote = path_to_file.name.replace('.xlsx', '')
-            df['Lote'] = lote
-            # lote = df['Lote'].str.replace('/', '', regex=False)
-            # df['Lote'] = lote   
-            # df['COR'] = '31-4'
-        
-
-            # Verifique se a coluna 'LEAF' existe no DataFrame
-            if 'LEAF' not in df.columns:
-                # Se não existir, crie uma coluna 'LEAF' com valores vazios
-                df['LEAF'] = 0
-
-            # Verifique se a coluna 'COR' existe no DataFrame
-            if 'COR' not in df.columns:
-                # Se não existir, crie uma coluna 'COR' com valores vazios
-                df['COR'] = '0'
-
-            # Verifique se a coluna 'P. Líquido' existe no DataFrame
-            if 'P. Líquido' not in df.columns:
-                # Se não existir, crie uma coluna 'P. Líquido' com valores vazios
-                df['P. Líquido'] = 0
-
-            # Verifique se a coluna 'Mic' existe no DataFrame
-            if 'Mic' not in df.columns:
-                # Se não existir, crie uma coluna 'Mic' com valores vazios
-                df['Mic'] = 0
-
-            # Verifique se a coluna 'UHM' existe no DataFrame
-            if 'UHM' not in df.columns:
-                # Se não existir, crie uma coluna 'UHM' com valores vazios
-                df['UHM'] = 0
-
-            # Verifique se a coluna 'Res' existe no DataFrame
-            if 'Res' not in df.columns:
-                # Se não existir, crie uma coluna 'Res' com valores vazios
-                df['Res'] = 0  
-            if 'Máquina' not in df.columns:
-                df['Máquina'] = 0
-            df['Contrato'] = np.nan
-            
-            if df['Máquina'].isnull().all():
-                df['Máquina'] = df['NaN']   
-        
-            sel_cols = ['Lote','Fardo','P. Líquido', 'Máquina', 'Mic', 'UHM', 'Res', 'COR', 'LEAF', 'Contrato']
-            df = df[sel_cols]
-            #st.dataframe(df)  
-            # df['COR'] = df['COR'].str.replace('"','')
-
-            # df['Res'] = df['Res'].astype(float)
-            # df['Res'].dropna(inplace=True)
-
-            # if np.count_nonzero(df.Res) == 0:
-            #     st.write(path_to_file.name)
-            
-
-        else:
-            df = pd.read_excel(path_to_file)
-
-        return df
+    #def extract_table_from_file_secon(path_to_file):
+    #    # st.write(path_to_file.name)
+    #    if path_to_file.name != 'resumo.xlsx':
+    #        # st.write(path_to_file.name)
+    #        df = pd.read_excel(path_to_file)
+          
+    #        indice_inicio = df.head(7).T.isna().sum().index[df.head(7).T.isna().sum()<4][0]
+    #        cols = df.iloc[indice_inicio].to_list()
+    #        try:
+    #            if 'UHM' in cols:
+    #                cols = cols
+    #            elif 'UHM' in df.columns.tolist():
+    #                cols = df.columns.tolist()
+    #            else:
+    #                raise ValueError("A coluna 'UHM' não foi encontrada em cols nem em df.columns.tolist()")
+    #        except Exception as e:
+    #            print(e)
+    #        cols = ['NaN' if pd.isna(valor) else valor for valor in cols]
+    #        # print(cols)
+    #        df = df.set_axis(cols, axis = 1)
+    #        drop_indices = df.head(7).T.isna().sum().index[df.head(7).T.isna().sum()>4].tolist()
+    #        # Removendo as linhas com base nos índices
+    #        df = df.drop(drop_indices).iloc[1:] #, inplace=True)
+    #        df = df.reset_index(drop=True)
+    #        # indice_final = df[df["Mic"].isna()].index[0]
+    #        # indice_final = df[df["UHM"].isna()].index[0]
+    #        try:
+    #            indice_final = df[df["UHM"].isna()].index[0]
+    #        except IndexError:
+    #            # Define indice_final como a quantidade de linhas de df caso o erro ocorra
+    #            indice_final = len(df)
+    #        df =  df.drop(df.index[indice_final:])
+    #        lote = path_to_file.name.replace('.xlsx', '')
+    #        df['Lote'] = lote
+    #        # lote = df['Lote'].str.replace('/', '', regex=False)
+    #        # df['Lote'] = lote   
+    #        # df['COR'] = '31-4'
+      
+    #        # Verifique se a coluna 'LEAF' existe no DataFrame
+    #        if 'LEAF' not in df.columns:
+    #            # Se não existir, crie uma coluna 'LEAF' com valores vazios
+    #            df['LEAF'] = 0
+    #        # Verifique se a coluna 'COR' existe no DataFrame
+    #        if 'COR' not in df.columns:
+    #            # Se não existir, crie uma coluna 'COR' com valores vazios
+    #            df['COR'] = '0'
+    #        # Verifique se a coluna 'P. Líquido' existe no DataFrame
+    #        if 'P. Líquido' not in df.columns:
+    #            # Se não existir, crie uma coluna 'P. Líquido' com valores vazios
+    #            df['P. Líquido'] = 0
+    #        # Verifique se a coluna 'Mic' existe no DataFrame
+    #        if 'Mic' not in df.columns:
+    #            # Se não existir, crie uma coluna 'Mic' com valores vazios
+    #            df['Mic'] = 0
+    #        # Verifique se a coluna 'UHM' existe no DataFrame
+    #        if 'UHM' not in df.columns:
+    #            # Se não existir, crie uma coluna 'UHM' com valores vazios
+    #            df['UHM'] = 0
+    #        # Verifique se a coluna 'Res' existe no DataFrame
+    #        if 'Res' not in df.columns:
+    #            # Se não existir, crie uma coluna 'Res' com valores vazios
+    #            df['Res'] = 0  
+    #        if 'Máquina' not in df.columns:
+    #            df['Máquina'] = 0
+    #        df['Contrato'] = np.nan
+          
+    #        if df['Máquina'].isnull().all():
+    #            df['Máquina'] = df['NaN']   
+      
+    #        sel_cols = ['Lote','Fardo','P. Líquido', 'Máquina', 'Mic', 'UHM', 'Res', 'COR', 'LEAF', 'Contrato']
+    #        df = df[sel_cols]
+    #        #st.dataframe(df)  
+    #        # df['COR'] = df['COR'].str.replace('"','')
+    #        # df['Res'] = df['Res'].astype(float)
+    #        # df['Res'].dropna(inplace=True)
+    #        # if np.count_nonzero(df.Res) == 0:
+    #        #     st.write(path_to_file.name)
+          
+    #    else:
+    #        df = pd.read_excel(path_to_file)
+    #    return df
 
     def alerta(lote,lista):
         # Inicializamos uma string vazia para armazenar os números
@@ -895,35 +882,35 @@ def tela_logado():
         return xlsx_files, resumo_file, parms_file
 
 
-    def atualizar_planilha(df, caixaSelecao):
-        new_df = df
-        lote_exibido = df[df['Lote'] == caixaSelecao]
-        lote_editado = st.data_editor(lote_exibido, hide_index=True, disabled=['Lote', 'Fardo', 'P. Líquido', 'Mic', 'UHM', 'Res', 'COR', 'LEAF'])
-        df[df['Lote'] == caixaSelecao] = lote_editado
+    # def atualizar_planilha(df, caixaSelecao):
+    #     new_df = df
+    #     lote_exibido = df[df['Lote'] == caixaSelecao]
+    #     lote_editado = st.data_editor(lote_exibido, hide_index=True, disabled=['Lote', 'Fardo', 'P. Líquido', 'Mic', 'UHM', 'Res', 'COR', 'LEAF'])
+    #     df[df['Lote'] == caixaSelecao] = lote_editado
 
-        return new_df
+    #     return new_df
 
-    def gerar_df_geral(arquivos_lotes):
-        df = pd.DataFrame()
-        for arquivo in arquivos_lotes:
-            tabela = extract_table_from_file_secon(arquivo)
-            df = pd.concat([df, tabela], ignore_index=True)
-        if 'df_geral' not in st.session_state:
-            st.session_state.df_geral = df
+    # def gerar_df_geral(arquivos_lotes):
+    #     df = pd.DataFrame()
+    #     for arquivo in arquivos_lotes:
+    #         tabela = extract_table_from_file_secon(arquivo)
+    #         df = pd.concat([df, tabela], ignore_index=True)
+    #     if 'df_geral' not in st.session_state:
+    #         st.session_state.df_geral = df
         
-        return st.session_state.df_geral
+    #     return st.session_state.df_geral
 
-    def selecioneOLote(lista_lotes, df): 
-        opcoes = ['Selecione um lote'] + lista_lotes.Lote.to_list()
-        caixaSelecao = st.selectbox('Visualizar lote', opcoes)
+    # def selecioneOLote(lista_lotes, df): 
+    #     opcoes = ['Selecione um lote'] + lista_lotes.Lote.to_list()
+    #     caixaSelecao = st.selectbox('Visualizar lote', opcoes)
         
-        if caixaSelecao != 'Selecione um lote':
-            st.write(f'Expandir lote {caixaSelecao}')
-            lote_exibido = st.session_state.df_geral[st.session_state.df_geral['Lote'] == caixaSelecao]
-            lote_editado = st.data_editor(lote_exibido, hide_index=True, disabled=['Lote', 'Fardo', 'P. Líquido', 'Mic', 'UHM', 'Res', 'COR', 'LEAF', 'Máquina'])
-            st.session_state.df_geral.loc[st.session_state.df_geral['Lote'] == caixaSelecao] = lote_editado
-        else:
-            st.write("Nenhum lote selecionado.")
+    #     if caixaSelecao != 'Selecione um lote':
+    #         st.write(f'Expandir lote {caixaSelecao}')
+    #         lote_exibido = st.session_state.df_geral[st.session_state.df_geral['Lote'] == caixaSelecao]
+    #         lote_editado = st.data_editor(lote_exibido, hide_index=True, disabled=['Lote', 'Fardo', 'P. Líquido', 'Mic', 'UHM', 'Res', 'COR', 'LEAF', 'Máquina'])
+    #         st.session_state.df_geral.loc[st.session_state.df_geral['Lote'] == caixaSelecao] = lote_editado
+    #     else:
+    #         st.write("Nenhum lote selecionado.")
 
 
 
@@ -1331,10 +1318,11 @@ def tela_logado():
             st.write('Selecione um contrato válido')
 
     def input_reemblocar():
-        on = st.toggle("Reemblocar?")
+        #on = st.toggle("Reemblocar?")
+        on = st.radio("Marque uma das opções:", ['Não', 'Sim'])
         reemblocar = 1
 
-        if on:
+        if on == 'Sim':
             st.write("Feature activated!")
             reemblocar = 2
         return reemblocar
@@ -1491,6 +1479,7 @@ def tela_logado():
             st.success(f"Carregando os Lotes!")
 
             # Deseja Reemblocar? Sim ou Não.
+            st.subheader('Deseja reemblocar?')
             reemblocar = input_reemblocar()
 
             # Executa a função se o arquivo for rodado diretamente
